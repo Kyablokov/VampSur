@@ -1,0 +1,17 @@
+build/
+cmake-build-*/
+out/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+*.o
+*.a
+*.dylib
+*.exe
+*.app

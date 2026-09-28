@@ -1,0 +1,20 @@
+{
+  "window": {
+    "width": 1280,
+    "height": 720,
+    "target_fps": 60,
+    "title": "Vampire Like"
+  },
+  "player": {
+    "speed": 220.0,
+    "radius": 14.0,
+    "start_x": 0.0,
+    "start_y": 0.0,
+    "color": [80, 200, 120, 255]
+  },
+  "world": {
+    "grid_size": 64,
+    "background_color": [18, 18, 24, 255],
+    "grid_color": [55, 55, 75, 255]
+  }
+}
