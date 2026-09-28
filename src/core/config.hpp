@@ -20,23 +20,41 @@ struct PlayerConfig {
     Color color  = {80, 200, 120, 255};
 };
 
+struct EnemyConfig {
+    float speed         = 90.0f;
+    float radius        = 10.0f;
+    Color color         = {200, 60, 60, 255};
+    float hp            = 10.0f;
+    float contactDamage = 8.0f;
+};
+
+struct SpawnerConfig {
+    float interval   = 0.7f;
+    float distance   = 700.0f;
+    int   maxEnemies = 500;
+};
+
+struct CombatConfig {
+    float playerHp         = 100.0f;
+    float playerInvulnTime = 0.6f;
+};
+
 struct WorldConfig {
     int   gridSize        = 64;
     Color backgroundColor = {18, 18, 24, 255};
-    Color gridColor       = {32, 32, 40, 255};
+    Color gridColor       = {55, 55, 75, 255};
 };
 
 struct GameConfig {
-    WindowConfig window;
-    PlayerConfig player;
-    WorldConfig  world;
+    WindowConfig  window;
+    PlayerConfig  player;
+    EnemyConfig   enemy;
+    SpawnerConfig spawner;
+    CombatConfig  combat;
+    WorldConfig   world;
 };
 
-// Загружает конфиг. Если path пустой — ищет game.json автоматически.
-// При любой ошибке возвращает значения по умолчанию (структуры выше).
 GameConfig loadGameConfig(const std::string& path = "");
-
-// Сохраняет текущий конфиг (пригодится позже — например, для сохранений прогресса).
-void saveGameConfig(const GameConfig& config, const std::string& path);
+void       saveGameConfig(const GameConfig& config, const std::string& path);
 
 }

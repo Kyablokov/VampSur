@@ -3,17 +3,22 @@
 #include <entt/entt.hpp>
 #include <raylib.h>
 
+#include "core/config.hpp"
+#include "core/game_state.hpp"
+
 namespace vk {
 
-// Управление: WASD/стрелки → Velocity игрока
-void updateInput(entt::registry& registry, float dt);
-
-// Движение: Position += Velocity * dt
+void updateInput  (entt::registry& registry, float dt);
 void updateMovement(entt::registry& registry, float dt);
 
-// Рендер: все сущности с Position + RenderCircle
-void renderCircles(entt::registry& registry);
+void spawnEnemies (entt::registry& registry, GameState& state,
+                   const GameConfig& config, float dt);
 
-// Декоративная сетка вокруг начала координат
+void chasePlayer  (entt::registry& registry, float dt);
+
+void resolveCombat(entt::registry& registry, GameState& state,
+                   const GameConfig& config, float dt);
+
+void renderCircles(entt::registry& registry);
 
 }

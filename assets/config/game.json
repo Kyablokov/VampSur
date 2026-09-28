@@ -12,6 +12,22 @@
     "start_y": 0.0,
     "color": [80, 200, 120, 255]
   },
+  "enemy": {
+    "speed": 90.0,
+    "radius": 10.0,
+    "color": [200, 60, 60, 255],
+    "hp": 10.0,
+    "contact_damage": 8.0
+  },
+  "spawner": {
+    "interval": 0.7,
+    "distance": 700.0,
+    "max_enemies": 500
+  },
+  "combat": {
+    "player_hp": 100.0,
+    "player_invuln_time": 0.6
+  },
   "world": {
     "grid_size": 64,
     "background_color": [18, 18, 24, 255],
