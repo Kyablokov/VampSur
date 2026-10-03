@@ -8,12 +8,13 @@
 namespace vk {
 
 inline entt::entity createPlayer(entt::registry& registry,
-                                 const PlayerConfig&  pcfg,
-                                 const CombatConfig&  ccfg,
-                                 const WeaponConfig&  wcfg,
-                                 const AuraConfig&    acfg,
-                                 const OrbitConfig&   ocfg,
-                                 const XPConfig&      xcfg) {
+                                 const PlayerConfig&    pcfg,
+                                 const CombatConfig&    ccfg,
+                                 const WeaponConfig&    wcfg,
+                                 const AuraConfig&      acfg,
+                                 const OrbitConfig&     ocfg,
+                                 const LightningConfig& lcfg,
+                                 const XPConfig&        xcfg) {
     const auto e = registry.create();
     registry.emplace<Position>     (e, pcfg.startX, pcfg.startY);
     registry.emplace<Velocity>     (e, 0.0f, 0.0f);
@@ -31,7 +32,6 @@ inline entt::entity createPlayer(entt::registry& registry,
 
     Weapon w;
     w.cooldown           = wcfg.cooldown;
-    w.timer              = 0.0f;
     w.range              = wcfg.range;
     w.projectileSpeed    = wcfg.projectileSpeed;
     w.projectileDamage   = wcfg.projectileDamage;
@@ -46,7 +46,6 @@ inline entt::entity createPlayer(entt::registry& registry,
     aura.radius       = acfg.baseRadius;
     aura.damage       = acfg.baseDamage;
     aura.tickInterval = acfg.tickInterval;
-    aura.timer        = 0.0f;
     aura.color        = acfg.color;
     registry.emplace<AuraWeapon>(e, aura);
 
@@ -57,9 +56,18 @@ inline entt::entity createPlayer(entt::registry& registry,
     orbit.angularSpeed     = ocfg.angularSpeed;
     orbit.projectileRadius = ocfg.projectileRadius;
     orbit.hitCooldown      = ocfg.hitCooldown;
-    orbit.currentAngle     = 0.0f;
     orbit.color            = ocfg.color;
     registry.emplace<OrbitWeapon>(e, orbit);
+
+    LightningWeapon lightning;
+    lightning.cooldown     = lcfg.cooldown;
+    lightning.range        = lcfg.range;
+    lightning.damage       = lcfg.damage;
+    lightning.targets      = lcfg.targets;
+    lightning.chainRadius  = lcfg.chainRadius;
+    lightning.boltLifetime = lcfg.boltLifetime;
+    lightning.color        = lcfg.color;
+    registry.emplace<LightningWeapon>(e, lightning);
 
     return e;
 }

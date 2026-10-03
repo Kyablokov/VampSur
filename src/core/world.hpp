@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <entt/entt.hpp>
 
 #include "core/config.hpp"
@@ -25,6 +26,9 @@ struct World {
     EntityPool<XPOrbTag>      xpOrbs;
 
     SpatialHash enemySpatial;
+
+    // Визуальные эффекты молний. Копятся в кадре, сами себя удаляют по таймеру.
+    std::vector<LightningBolt> lightningBolts;
 
     explicit World(GameConfig cfg);
 

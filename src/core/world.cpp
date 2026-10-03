@@ -39,11 +39,13 @@ World::World(GameConfig cfg)
              })
     , enemySpatial(64.0f)
 {
+    lightningBolts.reserve(64);
 }
 
 void World::spawnPlayer() {
     createPlayer(registry, config.player, config.combat,
-                 config.weapon, config.aura, config.orbit, config.xp);
+                 config.weapon, config.aura, config.orbit,
+                 config.lightning, config.xp);
 }
 
 void World::reset() {
@@ -69,6 +71,7 @@ void World::reset() {
     spawnPlayer();
 
     enemySpatial.clear();
+    lightningBolts.clear();
     state = GameState{};
 }
 

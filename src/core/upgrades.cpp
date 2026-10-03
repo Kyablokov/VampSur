@@ -17,30 +17,33 @@ void modifyWeapon(World& w, Fn&& fn) {
     if (auto pe = player(w); pe != entt::null && w.registry.all_of<Weapon>(pe))
         fn(w.registry.get<Weapon>(pe));
 }
-
 template <typename Fn>
 void modifyAura(World& w, Fn&& fn) {
     if (auto pe = player(w); pe != entt::null && w.registry.all_of<AuraWeapon>(pe))
         fn(w.registry.get<AuraWeapon>(pe));
 }
-
 template <typename Fn>
 void modifyOrbit(World& w, Fn&& fn) {
     if (auto pe = player(w); pe != entt::null && w.registry.all_of<OrbitWeapon>(pe))
         fn(w.registry.get<OrbitWeapon>(pe));
 }
-
-void modifyHealth(World& w, auto&& fn) {
+template <typename Fn>
+void modifyLightning(World& w, Fn&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<LightningWeapon>(pe))
+        fn(w.registry.get<LightningWeapon>(pe));
+}
+template <typename Fn>
+void modifyHealth(World& w, Fn&& fn) {
     if (auto pe = player(w); pe != entt::null && w.registry.all_of<Health>(pe))
         fn(w.registry.get<Health>(pe));
 }
-
-void modifySpeed(World& w, auto&& fn) {
+template <typename Fn>
+void modifySpeed(World& w, Fn&& fn) {
     if (auto pe = player(w); pe != entt::null && w.registry.all_of<Speed>(pe))
         fn(w.registry.get<Speed>(pe));
 }
-
-void modifyPickup(World& w, auto&& fn) {
+template <typename Fn>
+void modifyPickup(World& w, Fn&& fn) {
     if (auto pe = player(w); pe != entt::null && w.registry.all_of<PickupRadius>(pe))
         fn(w.registry.get<PickupRadius>(pe));
 }
@@ -48,7 +51,7 @@ void modifyPickup(World& w, auto&& fn) {
 } // namespace
 
 void applyUpgradeEffect(World& w, const std::string& type, float value) {
-    // ---- weapon ----
+    // ---- projectile weapon ----
     if (type == "weapon_damage_mul") {
         modifyWeapon(w, [v = value](Weapon& wp) { wp.projectileDamage *= v; });
     } else if (type == "weapon_cooldown_mul") {
@@ -80,9 +83,7 @@ void applyUpgradeEffect(World& w, const std::string& type, float value) {
     }
     // ---- orbit ----
     else if (type == "orbit_count_add") {
-        modifyOrbit(w, [v = value](OrbitWeapon& o) {
-            o.count = std::min(32, o.count + static_cast<int>(v));
-        });
+        modifyOrbit(w, [v = value](OrbitWeapon& o) { o.count = std::min(32, o.count + static_cast<int>(v)); });
     } else if (type == "orbit_radius_mul") {
         modifyOrbit(w, [v = value](OrbitWeapon& o) { o.radius *= v; });
     } else if (type == "orbit_damage_mul") {
@@ -90,7 +91,25 @@ void applyUpgradeEffect(World& w, const std::string& type, float value) {
     } else if (type == "orbit_speed_mul") {
         modifyOrbit(w, [v = value](OrbitWeapon& o) { o.angularSpeed *= v; });
     }
-    // ---- fallback ----
+    // ---- lightning ----
+    else if (type == "lightning_damage_mul") {
+        modifyLightning(w, [v = value](LightningWeapon& l) { l.damage *= v; });
+    } else if (type == "lightning_cooldown_mul") {
+        modifyLightning(w, [v = value](LightningWeapon& l) { l.cooldown = std::max(0.2f, l.cooldown * v); });
+    } else if (type == "lightning_range_mul") {
+        modifyLightning(w, [v = value](LightningWeapon& l) { l.range *= v; });
+    } else if (type == "lightning_targets_add") {
+        modifyLightning(w, [v = value](LightningWeapon& l) { l.targets = std::min(16, l.targets + static_cast<int>(v)); });
+    }
+    // ---- legendary: composite curse ----
+    else if (type == "greed_curse") {
+        modifyWeapon(w, [](Weapon& wp) { wp.projectileDamage *= 1.5f; });
+        modifyWeapon(w, [](Weapon& wp) { wp.cooldown = std::max(0.05f, wp.cooldown * 0.7f); });
+        modifyHealth(w, [](Health& h) {
+            h.max = std::max(10.0f, h.max * 0.8f);
+            h.current = std::min(h.current, h.max);
+        });
+    }
     else {
         TraceLog(LOG_WARNING, "Unknown upgrade effect: %s", type.c_str());
     }
@@ -111,14 +130,12 @@ void rollUpgrades(World& w) {
     };
 
     for (int i = 0; i < count; ++i) {
-        // Считаем суммарный вес среди ещё не выбранных слотов
         float total = 0.0f;
         for (int j = 0; j < n; ++j) {
             if (alreadyPicked(i, j)) continue;
             total += std::max(0.0f, pool[j].weight);
         }
         if (total <= 0.0f) {
-            // Все веса нули — берём первый невыбранный
             for (int j = 0; j < n; ++j) {
                 if (!alreadyPicked(i, j)) { w.state.upgradeOffer[i] = j; break; }
             }

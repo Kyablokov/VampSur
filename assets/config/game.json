@@ -1,17 +1,9 @@
 {
-  "window": {
-    "width": 1280,
-    "height": 720,
-    "target_fps": 60,
-    "title": "Vampire Like"
-  },
+  "window": { "width": 1280, "height": 720, "target_fps": 60, "title": "Vampire Like" },
   "player": {
-    "speed": 220.0,
-    "radius": 14.0,
-    "start_x": 0.0,
-    "start_y": 0.0,
-    "color": [80, 200, 120, 255],
-    "pickup_radius": 120.0
+    "speed": 220.0, "radius": 14.0,
+    "start_x": 0.0, "start_y": 0.0,
+    "color": [80, 200, 120, 255], "pickup_radius": 120.0
   },
   "enemy_types": [
     { "id": "grunt",  "speed": 90.0,  "radius": 10.0, "color": [200, 60, 60, 255],   "hp": 20.0, "contact_damage": 8.0,  "xp_value": 1.0, "spawn_weight": 70.0 },
@@ -19,39 +11,35 @@
     { "id": "tank",   "speed": 50.0,  "radius": 18.0, "color": [160, 70, 220, 255],  "hp": 80.0, "contact_damage": 15.0, "xp_value": 5.0, "spawn_weight": 8.0  }
   ],
   "weapon": {
-    "cooldown": 0.6,
-    "range": 550.0,
-    "projectile_speed": 620.0,
-    "projectile_damage": 10.0,
-    "projectile_lifetime": 1.5,
-    "projectile_radius": 4.0,
+    "cooldown": 0.6, "range": 550.0,
+    "projectile_speed": 620.0, "projectile_damage": 10.0,
+    "projectile_lifetime": 1.5, "projectile_radius": 4.0,
     "projectile_color": [255, 220, 90, 255],
-    "projectile_count": 1,
-    "projectile_spread": 0.15,
+    "projectile_count": 1, "projectile_spread": 0.15,
     "pool_capacity": 400
   },
   "aura": {
-    "base_radius": 90.0,
-    "base_damage": 6.0,
-    "tick_interval": 0.5,
-    "color": [255, 200, 100, 60]
+    "base_radius": 90.0, "base_damage": 6.0,
+    "tick_interval": 0.5, "color": [255, 200, 100, 60]
   },
   "orbit": {
-    "base_count": 2,
-    "base_radius": 70.0,
-    "base_damage": 8.0,
-    "angular_speed": 3.0,
-    "projectile_radius": 6.0,
-    "hit_cooldown": 0.4,
-    "color": [180, 120, 255, 255]
+    "base_count": 2, "base_radius": 70.0, "base_damage": 8.0,
+    "angular_speed": 3.0, "projectile_radius": 6.0,
+    "hit_cooldown": 0.4, "color": [180, 120, 255, 255]
+  },
+  "lightning": {
+    "cooldown": 2.0,
+    "range": 480.0,
+    "damage": 25.0,
+    "targets": 2,
+    "chain_radius": 220.0,
+    "bolt_lifetime": 0.15,
+    "color": [200, 240, 255, 255]
   },
   "xp": {
-    "orb_radius": 5.0,
-    "orb_color": [100, 220, 255, 255],
-    "magnet_speed": 480.0,
-    "pool_capacity": 800,
-    "base_requirement": 5,
-    "requirement_growth": 4
+    "orb_radius": 5.0, "orb_color": [100, 220, 255, 255],
+    "magnet_speed": 480.0, "pool_capacity": 800,
+    "base_requirement": 5, "requirement_growth": 4
   },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
   "combat":  { "player_hp": 100.0, "player_invuln_time": 0.6 },

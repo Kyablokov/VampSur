@@ -41,16 +41,34 @@ struct OrbitWeapon {
     int   count            = 2;
     float radius           = 70.0f;
     float damage           = 8.0f;
-    float angularSpeed     = 3.0f;      // радиан / сек
+    float angularSpeed     = 3.0f;
     float projectileRadius = 6.0f;
-    float hitCooldown      = 0.4f;      // секунд между попаданиями по одному врагу
+    float hitCooldown      = 0.4f;
     float currentAngle     = 0.0f;
     Color color            = {180, 120, 255, 255};
 };
 
-// Персональный кулдаун попадания орбитального снаряда.
-// Ставится каждому врагу в prewarm пула.
+struct LightningWeapon {
+    float cooldown     = 2.0f;
+    float timer        = 0.0f;
+    float range        = 480.0f;
+    float damage       = 25.0f;
+    int   targets      = 2;
+    float chainRadius  = 220.0f;
+    float boltLifetime = 0.15f;
+    Color color        = {200, 240, 255, 255};
+};
+
 struct OrbitHitCooldown { float remaining = 0.0f; };
+
+// Визуальный эффект — не ECS-компонент, лежит в World::lightningBolts
+struct LightningBolt {
+    Vector2 from       = {};
+    Vector2 to         = {};
+    float   remaining  = 0.0f;
+    float   maxLife    = 0.15f;
+    Color   color      = WHITE;
+};
 
 struct XPOrb        { float value = 1.0f; };
 struct XP           { int level = 1; float current = 0.0f; float needed = 5.0f; };

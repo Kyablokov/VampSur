@@ -82,6 +82,7 @@ std::vector<UpgradeConfig> loadUpgradesConfig(const std::string& path) {
         cfg.name        = u.value("name",        "");
         cfg.description = u.value("description", "");
         cfg.weight      = u.value("weight",      1.0f);
+        cfg.rarity      = u.value("rarity",      "common");
 
         if (u.contains("effect") && u["effect"].is_object()) {
             const auto& eff = u["effect"];
@@ -169,6 +170,16 @@ GameConfig loadGameConfig(const std::string& path) {
         config.orbit.hitCooldown      = o.value("hit_cooldown",      config.orbit.hitCooldown);
         if (o.contains("color")) config.orbit.color = parseColor(o["color"], config.orbit.color);
     }
+    if (j.contains("lightning")) {
+        const auto& l = j["lightning"];
+        config.lightning.cooldown     = l.value("cooldown",      config.lightning.cooldown);
+        config.lightning.range        = l.value("range",         config.lightning.range);
+        config.lightning.damage       = l.value("damage",        config.lightning.damage);
+        config.lightning.targets      = l.value("targets",       config.lightning.targets);
+        config.lightning.chainRadius  = l.value("chain_radius",  config.lightning.chainRadius);
+        config.lightning.boltLifetime = l.value("bolt_lifetime", config.lightning.boltLifetime);
+        if (l.contains("color")) config.lightning.color = parseColor(l["color"], config.lightning.color);
+    }
     if (j.contains("xp")) {
         const auto& x = j["xp"];
         config.xp.orbRadius         = x.value("orb_radius",         config.xp.orbRadius);
@@ -196,7 +207,6 @@ GameConfig loadGameConfig(const std::string& path) {
         if (wd.contains("grid_color"))       config.world.gridColor       = parseColor(wd["grid_color"],       config.world.gridColor);
     }
 
-    // Рядом с game.json ищем upgrades.json
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
@@ -221,8 +231,7 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
             { "id", e.id }, { "speed", e.speed }, { "radius", e.radius },
             { "color", colorToJson(e.color) }, { "hp", e.hp },
             { "contact_damage", e.contactDamage },
-            { "xp_value", e.xpValue },
-            { "spawn_weight", e.spawnWeight },
+            { "xp_value", e.xpValue }, { "spawn_weight", e.spawnWeight },
         });
     }
     j["weapon"] = {
@@ -246,6 +255,13 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "projectile_radius", c.orbit.projectileRadius },
         { "hit_cooldown", c.orbit.hitCooldown },
         { "color", colorToJson(c.orbit.color) },
+    };
+    j["lightning"] = {
+        { "cooldown", c.lightning.cooldown }, { "range", c.lightning.range },
+        { "damage", c.lightning.damage }, { "targets", c.lightning.targets },
+        { "chain_radius", c.lightning.chainRadius },
+        { "bolt_lifetime", c.lightning.boltLifetime },
+        { "color", colorToJson(c.lightning.color) },
     };
     j["xp"] = {
         { "orb_radius", c.xp.orbRadius }, { "orb_color", colorToJson(c.xp.orbColor) },

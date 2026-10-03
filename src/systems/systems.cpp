@@ -386,6 +386,88 @@ void resolveOrbitHits(World& w, float dt) {
     }
 }
 
+// ---------------------------------------------------------------- lightning
+
+void updateLightning(World& w, float dt) {
+    // Тикаем все активные эффекты, удаляем истёкшие
+    for (auto& bolt : w.lightningBolts) bolt.remaining -= dt;
+    w.lightningBolts.erase(
+        std::remove_if(w.lightningBolts.begin(), w.lightningBolts.end(),
+                       [](const LightningBolt& b) { return b.remaining <= 0.0f; }),
+        w.lightningBolts.end());
+
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<LightningWeapon, Position>(pe)) return;
+
+    auto& lightning = w.registry.get<LightningWeapon>(pe);
+    const auto& ppos = w.registry.get<Position>(pe);
+
+    lightning.timer -= dt;
+    if (lightning.timer > 0.0f) return;
+    lightning.timer = lightning.cooldown;
+
+    if (lightning.targets <= 0) return;
+
+    // Накапливаем список поражённых
+    std::vector<entt::entity> struck;
+    std::vector<entt::entity> killed;
+
+    // Первая цель: ближайший враг в радиусе
+    Vector2 cursor = { ppos.x, ppos.y };
+    float searchRadius = lightning.range;
+
+    for (int step = 0; step < lightning.targets; ++step) {
+        entt::entity best = entt::null;
+        float bestD2 = searchRadius * searchRadius;
+
+        w.registry.view<EnemyTag, Position>(entt::exclude<Inactive>).each(
+            [&](auto e, const Position& ep) {
+                // Уже поражён в этой цепочке?
+                for (auto s : struck) if (s == e) return;
+
+                const float dx = ep.x - cursor.x;
+                const float dy = ep.y - cursor.y;
+                const float d2 = dx * dx + dy * dy;
+                if (d2 < bestD2) { bestD2 = d2; best = e; }
+            });
+
+        if (best == entt::null) break;
+
+        const auto& bp = w.registry.get<Position>(best);
+
+        // Записываем визуальный эффект
+        LightningBolt bolt;
+        bolt.from        = cursor;
+        bolt.to          = { bp.x, bp.y };
+        bolt.remaining   = lightning.boltLifetime;
+        bolt.maxLife     = lightning.boltLifetime;
+        bolt.color       = lightning.color;
+        w.lightningBolts.push_back(bolt);
+
+        // Наносим урон
+        if (w.registry.all_of<Health>(best)) {
+            auto& hp = w.registry.get<Health>(best);
+            hp.current -= lightning.damage;
+            if (hp.current <= 0.0f) killed.push_back(best);
+        }
+
+        struck.push_back(best);
+        cursor = { bp.x, bp.y };
+        searchRadius = lightning.chainRadius;
+    }
+
+    // Дроп XP и освобождение
+    for (auto e : killed) {
+        const auto& pos = w.registry.get<Position>(e);
+        const float value = w.registry.get<XPValue>(e).value;
+        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
+            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
+        }
+        w.enemies.release(e);
+    }
+}
+
 // ---------------------------------------------------------------- XP
 
 void updateXPMagnet(World& w, float dt) {
@@ -485,6 +567,16 @@ void renderOrbit(World& w) {
     for (int i = 0; i < n; ++i) {
         DrawCircleV(positions[i], orbit.projectileRadius * 2.0f, Fade(orbit.color, 0.15f));
         DrawCircleV(positions[i], orbit.projectileRadius, orbit.color);
+    }
+}
+
+void renderLightning(World& w) {
+    for (const auto& b : w.lightningBolts) {
+        const float t = (b.maxLife > 0.0f) ? (b.remaining / b.maxLife) : 0.0f;
+        const Color c = Fade(b.color, t);
+        // Основная линия + внешнее свечение
+        DrawLineEx(b.from, b.to, 6.0f, Fade(b.color, t * 0.25f));
+        DrawLineEx(b.from, b.to, 2.0f, c);
     }
 }
 

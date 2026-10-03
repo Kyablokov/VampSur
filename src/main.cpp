@@ -78,20 +78,58 @@ void drawUpgradeHUD(const World& w) {
     }
 }
 
+// Панель текущего «билда» — цифры по оружию
+void drawBuildPanel(const World& w) {
+    auto pv = w.registry.view<PlayerTag, Weapon, AuraWeapon, OrbitWeapon, LightningWeapon>();
+    if (pv.begin() == pv.end()) return;
+
+    const auto e = *pv.begin();
+    const auto& wc = w.registry.get<Weapon>(e);
+    const auto& ac = w.registry.get<AuraWeapon>(e);
+    const auto& oc = w.registry.get<OrbitWeapon>(e);
+    const auto& lc = w.registry.get<LightningWeapon>(e);
+
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+    const int x = 10;
+    int y = sh - 130;
+
+    DrawRectangle(x - 4, y - 4, 260, 124, Fade(BLACK, 0.55f));
+
+    DrawText("BUILD", x, y, 16, LIGHTGRAY);
+    y += 20;
+
+    DrawText(TextFormat("Cannon:    DMG %5.1f  CD %.2f  N %d",
+                        wc.projectileDamage, wc.cooldown, wc.projectileCount),
+             x, y, 14, Color{ 255, 230, 120, 255 });
+    y += 18;
+
+    DrawText(TextFormat("Aura:      DMG %5.1f  R %5.1f",
+                        ac.damage, ac.radius),
+             x, y, 14, Color{ 255, 200, 100, 255 });
+    y += 18;
+
+    DrawText(TextFormat("Orbit:     DMG %5.1f  N %d  R %5.1f",
+                        oc.damage, oc.count, oc.radius),
+             x, y, 14, Color{ 180, 140, 255, 255 });
+    y += 18;
+
+    DrawText(TextFormat("Lightning: DMG %5.1f  CD %.2f  T %d",
+                        lc.damage, lc.cooldown, lc.targets),
+             x, y, 14, Color{ 180, 220, 255, 255 });
+}
+
 void drawHUD(const World& w) {
     const int minutes = static_cast<int>(w.state.timeSeconds) / 60;
     const int seconds = static_cast<int>(w.state.timeSeconds) % 60;
     DrawText(TextFormat("%02d:%02d", minutes, seconds),
              w.config.window.width / 2 - 40, 30, 34, RAYWHITE);
 
-    DrawText(TextFormat("Enemies: %zu / %zu",
-                        w.enemies.active(), w.enemies.capacity()),
+    DrawText(TextFormat("Enemies: %zu / %zu", w.enemies.active(), w.enemies.capacity()),
              10, 82, 18, ORANGE);
-    DrawText(TextFormat("Projectiles: %zu / %zu",
-                        w.projectiles.active(), w.projectiles.capacity()),
+    DrawText(TextFormat("Projectiles: %zu / %zu", w.projectiles.active(), w.projectiles.capacity()),
              10, 104, 16, ORANGE);
-    DrawText(TextFormat("XP orbs: %zu / %zu",
-                        w.xpOrbs.active(), w.xpOrbs.capacity()),
+    DrawText(TextFormat("XP orbs: %zu / %zu", w.xpOrbs.active(), w.xpOrbs.capacity()),
              10, 122, 16, ORANGE);
 
     auto pv = w.registry.view<PlayerTag, Health>();
@@ -107,7 +145,7 @@ void drawHUD(const World& w) {
 
 Rectangle cardRect(int slot, int screenW, int screenH) {
     constexpr float cardW = 340.0f;
-    constexpr float cardH = 380.0f;
+    constexpr float cardH = 400.0f;
     constexpr float gap   = 40.0f;
     const float total = cardW * 3 + gap * 2;
     const float startX = (screenW - total) * 0.5f;
@@ -115,14 +153,28 @@ Rectangle cardRect(int slot, int screenW, int screenH) {
     return { startX + slot * (cardW + gap), y, cardW, cardH };
 }
 
+struct RarityStyle {
+    Color border;
+    Color bg;
+    Color badge;
+    const char* label;
+};
+
+RarityStyle rarityStyle(const std::string& r) {
+    if (r == "legendary") return { {255, 180, 50, 255},  {40, 30, 10, 255}, {255, 180, 50, 255},  "LEGENDARY" };
+    if (r == "epic")      return { {180, 90, 240, 255},  {34, 20, 50, 255}, {180, 90, 240, 255},  "EPIC" };
+    if (r == "rare")      return { {80, 160, 255, 255},  {20, 30, 50, 255}, {80, 160, 255, 255},  "RARE" };
+    return                       { {80, 90, 110, 255},   {26, 30, 42, 255}, {160, 170, 190, 255}, "COMMON" };
+}
+
 void drawUpgradeScreen(World& w) {
     const int sw = w.config.window.width;
     const int sh = w.config.window.height;
 
-    DrawRectangle(0, 0, sw, sh, Fade(BLACK, 0.75f));
+    DrawRectangle(0, 0, sw, sh, Fade(BLACK, 0.78f));
 
     const char* title = "LEVEL UP!";
-    DrawText(title, sw/2 - MeasureText(title, 48)/2, 90, 48, GOLD);
+    DrawText(title, sw/2 - MeasureText(title, 48)/2, 80, 48, GOLD);
 
     const auto& pool = w.config.upgrades;
     const Vector2 mouse = GetMousePosition();
@@ -135,24 +187,36 @@ void drawUpgradeScreen(World& w) {
         const Rectangle r = cardRect(i, sw, sh);
         const bool hovered = CheckCollisionPointRec(mouse, r);
 
-        const Color bg     = hovered ? Color{ 40, 45, 60, 255 } : Color{ 26, 30, 42, 255 };
-        const Color border = hovered ? GOLD : Color{ 80, 90, 110, 255 };
+        const RarityStyle style = rarityStyle(up.rarity);
+        const Color bg     = hovered ? Color{
+            static_cast<unsigned char>(style.bg.r + 15),
+            static_cast<unsigned char>(style.bg.g + 15),
+            static_cast<unsigned char>(style.bg.b + 15),
+            255 } : style.bg;
+        const Color border = hovered ? style.border : Fade(style.border, 0.65f);
 
         DrawRectangleRec(r, bg);
         DrawRectangleLinesEx(r, 2.0f, border);
 
+        // Верхняя строка: [1] и бейдж редкости
         DrawText(TextFormat("[%d]", i + 1),
                  static_cast<int>(r.x) + 16, static_cast<int>(r.y) + 14,
                  22, Color{ 180, 200, 230, 255 });
 
-        const int nameY = static_cast<int>(r.y) + 60;
+        const int badgeW = MeasureText(style.label, 14);
+        DrawText(style.label,
+                 static_cast<int>(r.x + r.width) - badgeW - 16,
+                 static_cast<int>(r.y) + 20,
+                 14, style.badge);
+
+        const int nameY = static_cast<int>(r.y) + 70;
         DrawText(up.name.c_str(),
                  static_cast<int>(r.x) + 20, nameY, 26, RAYWHITE);
 
         DrawText(up.description.c_str(),
-                 static_cast<int>(r.x) + 20, nameY + 50, 18, Color{ 180, 190, 210, 255 });
+                 static_cast<int>(r.x) + 20, nameY + 55, 18, Color{ 190, 200, 220, 255 });
 
-        if (CheckCollisionPointRec(mouse, r) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (hovered && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             chooseUpgrade(w, i);
             return;
         }
@@ -196,6 +260,7 @@ int main() {
                 updateProjectiles(world, dt);
                 updateAura       (world, dt);
                 updateOrbit      (world, dt);
+                updateLightning  (world, dt);
                 resolveProjectileHits(world);
                 resolveOrbitHits     (world, dt);
                 resolveContactDamage (world, dt);
@@ -231,6 +296,7 @@ int main() {
             renderAura(world);
             renderOrbit(world);
             renderCircles(world.registry);
+            renderLightning(world);   // поверх всего, чтобы линии были видны
         EndMode2D();
 
         DrawFPS(10, 10);
@@ -239,6 +305,7 @@ int main() {
         drawXPBar(world);
         drawHUD(world);
         drawUpgradeHUD(world);
+        drawBuildPanel(world);
 
         if (world.state.mode == GameMode::Upgrading) {
             drawUpgradeScreen(world);

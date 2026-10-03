@@ -63,6 +63,16 @@ struct OrbitConfig {
     Color color            = {180, 120, 255, 255};
 };
 
+struct LightningConfig {
+    float cooldown     = 2.0f;
+    float range        = 480.0f;
+    float damage       = 25.0f;
+    int   targets      = 2;
+    float chainRadius  = 220.0f;
+    float boltLifetime = 0.15f;
+    Color color        = {200, 240, 255, 255};
+};
+
 struct XPConfig {
     float orbRadius         = 5.0f;
     Color orbColor          = {100, 220, 255, 255};
@@ -94,6 +104,7 @@ struct UpgradeConfig {
     std::string name;
     std::string description;
     float       weight      = 1.0f;
+    std::string rarity      = "common";   // common | rare | epic | legendary
     std::string effectType;
     float       effectValue = 0.0f;
 };
@@ -105,6 +116,7 @@ struct GameConfig {
     WeaponConfig                 weapon;
     AuraConfig                   aura;
     OrbitConfig                  orbit;
+    LightningConfig              lightning;
     XPConfig                     xp;
     SpawnerConfig                spawner;
     CombatConfig                 combat;
@@ -114,8 +126,6 @@ struct GameConfig {
 
 GameConfig loadGameConfig(const std::string& path = "");
 void       saveGameConfig(const GameConfig& config, const std::string& path);
-
-// Загрузка апгрейдов из отдельного файла (обычно upgrades.json рядом с game.json)
 std::vector<UpgradeConfig> loadUpgradesConfig(const std::string& path);
 
 inline int xpNeededForLevel(const XPConfig& cfg, int level) {
