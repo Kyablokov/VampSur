@@ -24,8 +24,19 @@ struct EnemyConfig {
     float speed         = 90.0f;
     float radius        = 10.0f;
     Color color         = {200, 60, 60, 255};
-    float hp            = 10.0f;
+    float hp            = 20.0f;
     float contactDamage = 8.0f;
+};
+
+struct WeaponConfig {
+    float cooldown           = 0.6f;
+    float range              = 550.0f;
+    float projectileSpeed    = 620.0f;
+    float projectileDamage   = 10.0f;
+    float projectileLifetime = 1.5f;
+    float projectileRadius   = 4.0f;
+    Color projectileColor    = {255, 220, 90, 255};
+    int   poolCapacity       = 400;
 };
 
 struct SpawnerConfig {
@@ -49,6 +60,7 @@ struct GameConfig {
     WindowConfig  window;
     PlayerConfig  player;
     EnemyConfig   enemy;
+    WeaponConfig  weapon;
     SpawnerConfig spawner;
     CombatConfig  combat;
     WorldConfig   world;

@@ -80,6 +80,17 @@ GameConfig loadGameConfig(const std::string& path) {
         config.enemy.contactDamage = e.value("contact_damage", config.enemy.contactDamage);
         if (e.contains("color")) config.enemy.color = parseColor(e["color"], config.enemy.color);
     }
+    if (j.contains("weapon")) {
+        const auto& w = j["weapon"];
+        config.weapon.cooldown           = w.value("cooldown",            config.weapon.cooldown);
+        config.weapon.range              = w.value("range",               config.weapon.range);
+        config.weapon.projectileSpeed    = w.value("projectile_speed",    config.weapon.projectileSpeed);
+        config.weapon.projectileDamage   = w.value("projectile_damage",   config.weapon.projectileDamage);
+        config.weapon.projectileLifetime = w.value("projectile_lifetime", config.weapon.projectileLifetime);
+        config.weapon.projectileRadius   = w.value("projectile_radius",   config.weapon.projectileRadius);
+        config.weapon.poolCapacity       = w.value("pool_capacity",       config.weapon.poolCapacity);
+        if (w.contains("projectile_color")) config.weapon.projectileColor = parseColor(w["projectile_color"], config.weapon.projectileColor);
+    }
     if (j.contains("spawner")) {
         const auto& s = j["spawner"];
         config.spawner.interval   = s.value("interval",    config.spawner.interval);
@@ -117,6 +128,15 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "speed", c.enemy.speed }, { "radius", c.enemy.radius },
         { "hp", c.enemy.hp }, { "contact_damage", c.enemy.contactDamage },
         { "color", colorToJson(c.enemy.color) },
+    };
+    j["weapon"] = {
+        { "cooldown", c.weapon.cooldown }, { "range", c.weapon.range },
+        { "projectile_speed", c.weapon.projectileSpeed },
+        { "projectile_damage", c.weapon.projectileDamage },
+        { "projectile_lifetime", c.weapon.projectileLifetime },
+        { "projectile_radius", c.weapon.projectileRadius },
+        { "projectile_color", colorToJson(c.weapon.projectileColor) },
+        { "pool_capacity", c.weapon.poolCapacity },
     };
     j["spawner"] = {
         { "interval", c.spawner.interval },

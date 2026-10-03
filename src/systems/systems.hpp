@@ -3,22 +3,22 @@
 #include <entt/entt.hpp>
 #include <raylib.h>
 
-#include "core/config.hpp"
-#include "core/game_state.hpp"
+#include "core/world.hpp"
 
 namespace vk {
 
-void updateInput  (entt::registry& registry, float dt);
-void updateMovement(entt::registry& registry, float dt);
+void updateInput      (World& w, float dt);
+void updateMovement   (World& w, float dt);
 
-void spawnEnemies (entt::registry& registry, GameState& state,
-                   const GameConfig& config, float dt);
+void spawnEnemies     (World& w, float dt);
+void chasePlayer      (World& w, float dt);
+void rebuildSpatial   (World& w);
 
-void chasePlayer  (entt::registry& registry, float dt);
+void updateWeapons    (World& w, float dt);
+void updateProjectiles(World& w, float dt);
+void resolveProjectileHits(World& w);
+void resolveContactDamage (World& w, float dt);
 
-void resolveCombat(entt::registry& registry, GameState& state,
-                   const GameConfig& config, float dt);
-
-void renderCircles(entt::registry& registry);
+void renderCircles    (entt::registry& r);
 
 }

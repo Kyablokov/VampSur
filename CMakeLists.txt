@@ -44,6 +44,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 add_executable(vampire_like
     src/main.cpp
     src/core/config.cpp
+    src/core/world.cpp
     src/systems/systems.cpp
 )
 

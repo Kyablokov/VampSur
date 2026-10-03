@@ -5,8 +5,8 @@
 
 #include "components/components.hpp"
 #include "core/config.hpp"
-#include "core/factory.hpp"
 #include "core/game_state.hpp"
+#include "core/world.hpp"
 #include "systems/systems.hpp"
 
 using namespace vk;
@@ -20,7 +20,6 @@ void drawGrid(float gridSize, float halfRange, Color color) {
         DrawLineV({ -halfRange, y }, { halfRange, y }, color);
 }
 
-// Маркеры вокруг заданного центра — детерминированы по мировым координатам
 void drawWorldMarkers(float spacing, float range, Vector2 center, Color color) {
     const int step = static_cast<int>(spacing);
     const int minX = static_cast<int>(std::floor((center.x - range) / step)) * step;
@@ -39,26 +38,27 @@ void drawWorldMarkers(float spacing, float range, Vector2 center, Color color) {
     }
 }
 
-void drawHUD(const GameState& state, entt::registry& registry, int screenWidth) {
-    // Таймер сверху по центру
-    const int minutes = static_cast<int>(state.timeSeconds) / 60;
-    const int seconds = static_cast<int>(state.timeSeconds) % 60;
+void drawHUD(const World& w) {
+    const int minutes = static_cast<int>(w.state.timeSeconds) / 60;
+    const int seconds = static_cast<int>(w.state.timeSeconds) % 60;
     DrawText(TextFormat("%02d:%02d", minutes, seconds),
-             screenWidth / 2 - 40, 20, 34, RAYWHITE);
+             w.config.window.width / 2 - 40, 20, 34, RAYWHITE);
 
-    // Счётчик врагов
-    const auto enemyCount = registry.view<EnemyTag>().size();
-    DrawText(TextFormat("Enemies: %zu", enemyCount), 10, 82, 18, ORANGE);
+    DrawText(TextFormat("Enemies: %zu / %zu",
+                        w.enemies.active(), w.enemies.capacity()),
+             10, 82, 18, ORANGE);
+    DrawText(TextFormat("Projectiles: %zu / %zu",
+                        w.projectiles.active(), w.projectiles.capacity()),
+             10, 104, 16, ORANGE);
 
-    // HP-бар игрока
-    auto pv = registry.view<PlayerTag, Health>();
+    auto pv = w.registry.view<PlayerTag, Health>();
     if (pv.begin() != pv.end()) {
         const auto& hp = pv.get<Health>(*pv.begin());
         const float frac = (hp.max > 0.0f) ? (hp.current / hp.max) : 0.0f;
-        DrawRectangle(10, 110, 202, 22, Fade(BLACK, 0.6f));
-        DrawRectangle(11, 111, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
+        DrawRectangle(10, 130, 202, 22, Fade(BLACK, 0.6f));
+        DrawRectangle(11, 131, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
-                 16, 114, 16, RAYWHITE);
+                 16, 134, 16, RAYWHITE);
     }
 }
 
@@ -70,15 +70,8 @@ int main() {
     InitWindow(config.window.width, config.window.height, config.window.title.c_str());
     SetTargetFPS(config.window.targetFps);
 
-    entt::registry registry;
-    GameState      state;
-
-    auto resetGame = [&]() {
-        registry.clear();
-        state = GameState{};
-        createPlayer(registry, config.player, config.combat);
-    };
-    resetGame();
+    World world(config);
+    world.spawnPlayer();
 
     Camera2D camera{};
     camera.zoom   = 1.0f;
@@ -91,44 +84,46 @@ int main() {
     while (!WindowShouldClose()) {
         const float dt = GetFrameTime();
 
-        // --- Логика ---
-        if (state.gameOver) {
-            if (IsKeyPressed(KEY_SPACE)) resetGame();
+        if (world.state.gameOver) {
+            if (IsKeyPressed(KEY_SPACE)) world.reset();
         } else {
-            state.timeSeconds += dt;
-            updateInput  (registry, dt);
-            spawnEnemies (registry, state, config, dt);
-            chasePlayer  (registry, dt);
-            updateMovement(registry, dt);
-            resolveCombat(registry, state, config, dt);
+            world.state.timeSeconds += dt;
+
+            updateInput      (world, dt);
+            spawnEnemies     (world, dt);
+            chasePlayer      (world, dt);
+            updateMovement   (world, dt);
+
+            rebuildSpatial   (world);       // актуальные позиции врагов
+            updateWeapons    (world, dt);   // спавн снарядов (с velocity на след. кадр)
+            updateProjectiles(world, dt);   // тик лайфтаймов
+            resolveProjectileHits(world);   // столкновения снаряд↔враг
+            resolveContactDamage (world, dt);
         }
 
-        // --- Камера следует за игроком ---
+        // Камера
         float playerX = 0.0f, playerY = 0.0f;
-        registry.view<PlayerTag, Position>().each(
+        world.registry.view<PlayerTag, Position>().each(
             [&](auto, const Position& pos) {
                 playerX = pos.x; playerY = pos.y;
                 camera.target = { pos.x, pos.y };
             });
 
-        // --- Отрисовка ---
         BeginDrawing();
         ClearBackground(config.world.backgroundColor);
 
         BeginMode2D(camera);
             drawGrid(static_cast<float>(config.world.gridSize), 5000.0f, config.world.gridColor);
             drawWorldMarkers(160.0f, 900.0f, { playerX, playerY }, Color{ 90, 90, 110, 255 });
-            renderCircles(registry);
+            renderCircles(world.registry);
         EndMode2D();
 
-        // HUD
         DrawFPS(10, 10);
         DrawText("WASD / arrows - move", 10, 34, 18, LIGHTGRAY);
         DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 58, 18, LIME);
-        drawHUD(state, registry, config.window.width);
+        drawHUD(world);
 
-        // Game Over overlay
-        if (state.gameOver) {
+        if (world.state.gameOver) {
             DrawRectangle(0, 0, config.window.width, config.window.height, Fade(BLACK, 0.65f));
             DrawText("GAME OVER",
                      config.window.width / 2 - 130,

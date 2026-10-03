@@ -16,8 +16,18 @@
     "speed": 90.0,
     "radius": 10.0,
     "color": [200, 60, 60, 255],
-    "hp": 10.0,
+    "hp": 20.0,
     "contact_damage": 8.0
+  },
+  "weapon": {
+    "cooldown": 0.6,
+    "range": 550.0,
+    "projectile_speed": 620.0,
+    "projectile_damage": 10.0,
+    "projectile_lifetime": 1.5,
+    "projectile_radius": 4.0,
+    "projectile_color": [255, 220, 90, 255],
+    "pool_capacity": 400
   },
   "spawner": {
     "interval": 0.7,
