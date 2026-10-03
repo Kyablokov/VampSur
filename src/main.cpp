@@ -39,6 +39,13 @@ void drawWorldMarkers(float spacing, float range, Vector2 center, Color color) {
     }
 }
 
+std::string formatTime(float seconds) {
+    const int total = static_cast<int>(seconds);
+    const int m = total / 60;
+    const int s = total % 60;
+    return TextFormat("%02d:%02d", m, s);
+}
+
 void drawXPBar(const World& w) {
     auto pv = w.registry.view<PlayerTag, XP>();
     if (pv.begin() == pv.end()) return;
@@ -78,7 +85,6 @@ void drawUpgradeHUD(const World& w) {
     }
 }
 
-// Панель текущего «билда» — цифры по оружию
 void drawBuildPanel(const World& w) {
     auto pv = w.registry.view<PlayerTag, Weapon, AuraWeapon, OrbitWeapon, LightningWeapon>();
     if (pv.begin() == pv.end()) return;
@@ -125,22 +131,26 @@ void drawHUD(const World& w) {
     DrawText(TextFormat("%02d:%02d", minutes, seconds),
              w.config.window.width / 2 - 40, 30, 34, RAYWHITE);
 
+    DrawText(TextFormat("Kills: %d", w.state.stats.kills), 10, 82, 18, ORANGE);
     DrawText(TextFormat("Enemies: %zu / %zu", w.enemies.active(), w.enemies.capacity()),
-             10, 82, 18, ORANGE);
-    DrawText(TextFormat("Projectiles: %zu / %zu", w.projectiles.active(), w.projectiles.capacity()),
              10, 104, 16, ORANGE);
-    DrawText(TextFormat("XP orbs: %zu / %zu", w.xpOrbs.active(), w.xpOrbs.capacity()),
+    DrawText(TextFormat("Projectiles: %zu / %zu", w.projectiles.active(), w.projectiles.capacity()),
              10, 122, 16, ORANGE);
+    DrawText(TextFormat("XP orbs: %zu / %zu", w.xpOrbs.active(), w.xpOrbs.capacity()),
+             10, 140, 16, ORANGE);
 
     auto pv = w.registry.view<PlayerTag, Health>();
     if (pv.begin() != pv.end()) {
         const auto& hp = pv.get<Health>(*pv.begin());
         const float frac = (hp.max > 0.0f) ? (hp.current / hp.max) : 0.0f;
-        DrawRectangle(10, 148, 202, 22, Fade(BLACK, 0.6f));
-        DrawRectangle(11, 149, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
+        DrawRectangle(10, 166, 202, 22, Fade(BLACK, 0.6f));
+        DrawRectangle(11, 167, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
-                 16, 152, 16, RAYWHITE);
+                 16, 170, 16, RAYWHITE);
     }
+
+    // Подсказка
+    DrawText("[ESC] pause", 10, 200, 16, Color{ 140, 150, 170, 255 });
 }
 
 Rectangle cardRect(int slot, int screenW, int screenH) {
@@ -188,7 +198,7 @@ void drawUpgradeScreen(World& w) {
         const bool hovered = CheckCollisionPointRec(mouse, r);
 
         const RarityStyle style = rarityStyle(up.rarity);
-        const Color bg     = hovered ? Color{
+        const Color bg = hovered ? Color{
             static_cast<unsigned char>(style.bg.r + 15),
             static_cast<unsigned char>(style.bg.g + 15),
             static_cast<unsigned char>(style.bg.b + 15),
@@ -198,7 +208,6 @@ void drawUpgradeScreen(World& w) {
         DrawRectangleRec(r, bg);
         DrawRectangleLinesEx(r, 2.0f, border);
 
-        // Верхняя строка: [1] и бейдж редкости
         DrawText(TextFormat("[%d]", i + 1),
                  static_cast<int>(r.x) + 16, static_cast<int>(r.y) + 14,
                  22, Color{ 180, 200, 230, 255 });
@@ -206,8 +215,7 @@ void drawUpgradeScreen(World& w) {
         const int badgeW = MeasureText(style.label, 14);
         DrawText(style.label,
                  static_cast<int>(r.x + r.width) - badgeW - 16,
-                 static_cast<int>(r.y) + 20,
-                 14, style.badge);
+                 static_cast<int>(r.y) + 20, 14, style.badge);
 
         const int nameY = static_cast<int>(r.y) + 70;
         DrawText(up.name.c_str(),
@@ -223,13 +231,84 @@ void drawUpgradeScreen(World& w) {
     }
 }
 
+void drawPausedOverlay(const World& w) {
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+
+    DrawRectangle(0, 0, sw, sh, Fade(BLACK, 0.55f));
+
+    const char* title = "PAUSED";
+    DrawText(title, sw/2 - MeasureText(title, 56)/2, sh/2 - 80, 56, RAYWHITE);
+
+    const char* hint = "Press ESC or P to resume";
+    DrawText(hint, sw/2 - MeasureText(hint, 22)/2, sh/2 + 10, 22, Color{ 200, 210, 230, 255 });
+
+    // Мини-статы
+    const char* stats = TextFormat("Time %s   Level %d   Kills %d",
+                                   formatTime(w.state.timeSeconds).c_str(),
+                                   [&]() {
+                                       auto pv = w.registry.view<PlayerTag, XP>();
+                                       return pv.begin() == pv.end() ? 1 : pv.get<XP>(*pv.begin()).level;
+                                   }(),
+                                   w.state.stats.kills);
+    DrawText(stats, sw/2 - MeasureText(stats, 18)/2, sh/2 + 60, 18, GOLD);
+}
+
+void drawDeathScreen(const World& w) {
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+
+    DrawRectangle(0, 0, sw, sh, Fade(BLACK, 0.82f));
+
+    const char* title = "GAME OVER";
+    DrawText(title, sw/2 - MeasureText(title, 52)/2, 100, 52, RED);
+
+    const int colLabelX  = sw/2 - 240;
+    const int colValueX  = sw/2 + 20;
+    int y = 210;
+
+    // Заголовки таблицы
+    DrawText("", colLabelX, y, 20, LIGHTGRAY);
+    DrawText("THIS RUN", colValueX + 100, y, 20, Color{ 200, 210, 230, 255 });
+    DrawText("BEST",     colValueX + 260, y, 20, GOLD);
+    y += 32;
+
+    auto row = [&](const char* label, const char* run, const char* best, bool newBest) {
+        DrawText(label, colLabelX, y, 22, LIGHTGRAY);
+        DrawText(run,   colValueX + 100, y, 22, RAYWHITE);
+        DrawText(best,  colValueX + 260, y, 22, newBest ? GOLD : Color{ 200, 210, 230, 255 });
+        if (newBest) {
+            DrawText("NEW!", colValueX + 360, y, 22, GOLD);
+        }
+        y += 34;
+    };
+
+    const auto& sd = w.saveData;
+    row("Time",  formatTime(sd.lastTime).c_str(),  formatTime(sd.bestTime).c_str(),  sd.newBestTime);
+    row("Level", TextFormat("%d", sd.lastLevel), TextFormat("%d", sd.bestLevel), sd.newBestLevel);
+    row("Kills", TextFormat("%d", sd.lastKills), TextFormat("%d", sd.bestKills), sd.newBestKills);
+
+    y += 20;
+    DrawText(TextFormat("Damage taken this run: %.0f", w.state.stats.damageTaken),
+             colLabelX, y, 18, Color{ 220, 160, 160, 255 });
+    y += 30;
+    DrawText(TextFormat("Total runs: %d", sd.totalRuns),
+             colLabelX, y, 18, Color{ 160, 170, 190, 255 });
+
+    const char* hint = "Press SPACE to restart";
+    DrawText(hint, sw/2 - MeasureText(hint, 24)/2, sh - 110, 24, RAYWHITE);
+}
+
 } // namespace
 
 int main() {
     GameConfig config = loadGameConfig();
 
     InitWindow(config.window.width, config.window.height, config.window.title.c_str());
+    SetWindowState(FLAG_WINDOW_TOPMOST);
+    ClearWindowState(FLAG_WINDOW_TOPMOST);
     SetTargetFPS(config.window.targetFps);
+    SetExitKey(KEY_NULL);  // ESC больше не закрывает окно — используем как паузу
 
     World world(config);
     world.spawnPlayer();
@@ -266,6 +345,10 @@ int main() {
                 resolveContactDamage (world, dt);
                 resolveXPPickup      (world);
                 checkLevelUp         (world);
+
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+                    world.state.mode = GameMode::Paused;
+                }
                 break;
             }
             case GameMode::Upgrading: {
@@ -274,7 +357,14 @@ int main() {
                 if (IsKeyPressed(KEY_THREE)) chooseUpgrade(world, 2);
                 break;
             }
+            case GameMode::Paused: {
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+                    world.state.mode = GameMode::Playing;
+                }
+                break;
+            }
             case GameMode::GameOver: {
+                world.finalizeRun();
                 if (IsKeyPressed(KEY_SPACE)) world.reset();
                 break;
             }
@@ -296,12 +386,11 @@ int main() {
             renderAura(world);
             renderOrbit(world);
             renderCircles(world.registry);
-            renderLightning(world);   // поверх всего, чтобы линии были видны
+            renderLightning(world);
         EndMode2D();
 
         DrawFPS(10, 10);
-        DrawText("WASD / arrows - move", 10, 200, 18, LIGHTGRAY);
-        DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 222, 18, LIME);
+        DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 224, 16, LIME);
         drawXPBar(world);
         drawHUD(world);
         drawUpgradeHUD(world);
@@ -309,14 +398,10 @@ int main() {
 
         if (world.state.mode == GameMode::Upgrading) {
             drawUpgradeScreen(world);
+        } else if (world.state.mode == GameMode::Paused) {
+            drawPausedOverlay(world);
         } else if (world.state.mode == GameMode::GameOver) {
-            DrawRectangle(0, 0, config.window.width, config.window.height, Fade(BLACK, 0.65f));
-            DrawText("GAME OVER",
-                     config.window.width / 2 - 130,
-                     config.window.height / 2 - 40, 52, RED);
-            DrawText("Press SPACE to restart",
-                     config.window.width / 2 - 130,
-                     config.window.height / 2 + 30, 24, RAYWHITE);
+            drawDeathScreen(world);
         }
 
         EndDrawing();

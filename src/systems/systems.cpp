@@ -212,6 +212,7 @@ void resolveProjectileHits(World& w) {
         });
 
     for (auto e : killedEnemies) {
+        w.state.stats.kills += 1;   // ← добавить
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
@@ -259,6 +260,7 @@ void resolveContactDamage(World& w, float dt) {
     w.enemies.release(hitEnemy);
 
     auto& hp = w.registry.get<Health>(pe);
+    w.state.stats.damageTaken += damage;
     hp.current -= damage;
     w.registry.emplace_or_replace<Invulnerability>(pe, w.config.combat.playerInvulnTime);
 
@@ -296,6 +298,7 @@ void updateAura(World& w, float dt) {
         });
 
     for (auto e : killed) {
+        w.state.stats.kills += 1;   // ← добавить
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
@@ -377,6 +380,7 @@ void resolveOrbitHits(World& w, float dt) {
         });
 
     for (auto e : killed) {
+        w.state.stats.kills += 1;   // ← добавить
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
@@ -459,6 +463,7 @@ void updateLightning(World& w, float dt) {
 
     // Дроп XP и освобождение
     for (auto e : killed) {
+        w.state.stats.kills += 1;   // ← добавить
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {

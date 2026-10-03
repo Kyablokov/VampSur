@@ -30,7 +30,13 @@ inline int randInt(uint64_t& s, int lo, int hi) {
 enum class GameMode {
     Playing,
     Upgrading,
+    Paused,
     GameOver,
+};
+
+struct RunStats {
+    int   kills       = 0;
+    float damageTaken = 0.0f;
 };
 
 struct GameState {
@@ -39,9 +45,12 @@ struct GameState {
     GameMode mode        = GameMode::Playing;
     uint64_t rngState    = 0x9E3779B97F4A7C15ull;
 
-    std::array<int, 3> upgradeOffer = { -1, -1, -1 };
+    RunStats stats;
 
-    // id -> сколько раз взят
+    // Флаг: результат текущего прогона уже записан в save.json
+    bool runSaved = false;
+
+    std::array<int, 3> upgradeOffer = { -1, -1, -1 };
     std::unordered_map<std::string, int> takenUpgrades;
 };
 

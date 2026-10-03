@@ -1,5 +1,6 @@
 #include "core/world.hpp"
 
+#include <algorithm>
 #include <vector>
 
 #include "core/factory.hpp"
@@ -40,6 +41,7 @@ World::World(GameConfig cfg)
     , enemySpatial(64.0f)
 {
     lightningBolts.reserve(64);
+    saveData = loadSaveFile();
 }
 
 void World::spawnPlayer() {
@@ -73,6 +75,32 @@ void World::reset() {
     enemySpatial.clear();
     lightningBolts.clear();
     state = GameState{};
+}
+
+void World::finalizeRun() {
+    if (state.runSaved) return;
+
+    int level = 1;
+    if (auto pe = findPlayer(registry); pe != entt::null && registry.all_of<XP>(pe)) {
+        level = registry.get<XP>(pe).level;
+    }
+
+    saveData.lastTime  = state.timeSeconds;
+    saveData.lastLevel = level;
+    saveData.lastKills = state.stats.kills;
+
+    saveData.newBestTime  = (saveData.lastTime  > saveData.bestTime);
+    saveData.newBestLevel = (saveData.lastLevel > saveData.bestLevel);
+    saveData.newBestKills = (saveData.lastKills > saveData.bestKills);
+
+    if (saveData.newBestTime)  saveData.bestTime  = saveData.lastTime;
+    if (saveData.newBestLevel) saveData.bestLevel = saveData.lastLevel;
+    if (saveData.newBestKills) saveData.bestKills = saveData.lastKills;
+
+    saveData.totalRuns++;
+
+    writeSaveFile(saveData);
+    state.runSaved = true;
 }
 
 } // namespace vk

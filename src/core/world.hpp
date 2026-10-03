@@ -6,6 +6,7 @@
 #include "core/config.hpp"
 #include "core/game_state.hpp"
 #include "core/pools.hpp"
+#include "core/save.hpp"
 #include "core/spatial_hash.hpp"
 #include "components/components.hpp"
 
@@ -27,13 +28,19 @@ struct World {
 
     SpatialHash enemySpatial;
 
-    // Визуальные эффекты молний. Копятся в кадре, сами себя удаляют по таймеру.
     std::vector<LightningBolt> lightningBolts;
+
+    // Рекорды и статистика — живут между reset(), не обнуляются.
+    SaveData saveData;
 
     explicit World(GameConfig cfg);
 
     void reset();
     void spawnPlayer();
+
+    // Считает итог текущего прогона, обновляет saveData, пишет файл.
+    // Идемпотентна: повторный вызов ничего не сделает.
+    void finalizeRun();
 };
 
 }
