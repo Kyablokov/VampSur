@@ -42,6 +42,24 @@ void updateMovement(World& w, float dt) {
 
 // ---------------------------------------------------------------- spawner
 
+namespace {
+
+const EnemyTypeConfig& pickEnemyType(World& w) {
+    const auto& types = w.config.enemyTypes;
+    float total = 0.0f;
+    for (const auto& t : types) total += (t.spawnWeight > 0.0f ? t.spawnWeight : 0.0f);
+    if (total <= 0.0f) return types.front();
+
+    float r = randRange(w.state.rngState, 0.0f, total);
+    for (const auto& t : types) {
+        r -= (t.spawnWeight > 0.0f ? t.spawnWeight : 0.0f);
+        if (r <= 0.0f) return t;
+    }
+    return types.back();
+}
+
+} // namespace
+
 void spawnEnemies(World& w, float dt) {
     w.state.spawnTimer -= dt;
     if (w.state.spawnTimer > 0.0f) return;
@@ -61,7 +79,7 @@ void spawnEnemies(World& w, float dt) {
     const float x     = ppos.x + std::cos(angle) * dist;
     const float y     = ppos.y + std::sin(angle) * dist;
 
-    configureEnemy(w.registry, e, x, y, w.config.enemy);
+    configureEnemy(w.registry, e, x, y, pickEnemyType(w));
 }
 
 // ---------------------------------------------------------------- AI
@@ -83,7 +101,7 @@ void chasePlayer(World& w, float /*dt*/) {
         });
 }
 
-// ---------------------------------------------------------------- spatial hash
+// ---------------------------------------------------------------- spatial
 
 void rebuildSpatial(World& w) {
     w.enemySpatial.clear();
@@ -107,7 +125,6 @@ void updateWeapons(World& w, float dt) {
     if (weapon.timer > 0.0f) return;
     weapon.timer = weapon.cooldown;
 
-    // Ищем ближайшего врага в радиусе
     std::vector<entt::entity> candidates;
     candidates.reserve(64);
     w.enemySpatial.query(ppos.x, ppos.y, weapon.range, candidates);
@@ -188,20 +205,18 @@ void resolveProjectileHits(World& w) {
             }
         });
 
-    // Дропаем XP до того, как отпустим врагов в пул
     for (auto e : killedEnemies) {
         const auto& pos = w.registry.get<Position>(e);
-        const auto orb = w.xpOrbs.acquire();
-        if (orb != entt::null) {
-            configureXPOrb(w.registry, orb, pos.x, pos.y,
-                           w.config.xp.orbValue, w.config.xp);
+        const float value = w.registry.get<XPValue>(e).value;
+        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
+            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
         }
         w.enemies.release(e);
     }
     for (auto p : hitProjectiles) w.projectiles.release(p);
 }
 
-// ---------------------------------------------------------------- contact damage
+// ---------------------------------------------------------------- contact
 
 void resolveContactDamage(World& w, float dt) {
     w.registry.view<Invulnerability>().each(
@@ -247,6 +262,43 @@ void resolveContactDamage(World& w, float dt) {
     }
 }
 
+// ---------------------------------------------------------------- aura
+
+void updateAura(World& w, float dt) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<AuraWeapon, Position>(pe)) return;
+
+    auto& aura = w.registry.get<AuraWeapon>(pe);
+    const auto& ppos = w.registry.get<Position>(pe);
+
+    aura.timer -= dt;
+    if (aura.timer > 0.0f) return;
+    aura.timer = aura.tickInterval;
+
+    std::vector<entt::entity> killed;
+
+    w.registry.view<EnemyTag, Position, RenderCircle, Health>(entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, Health& hp) {
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r  = aura.radius + rc.radius;
+            if (dx * dx + dy * dy > r * r) return;
+
+            hp.current -= aura.damage;
+            if (hp.current <= 0.0f) killed.push_back(e);
+        });
+
+    for (auto e : killed) {
+        const auto& pos = w.registry.get<Position>(e);
+        const float value = w.registry.get<XPValue>(e).value;
+        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
+            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
+        }
+        w.enemies.release(e);
+    }
+}
+
 // ---------------------------------------------------------------- XP
 
 void updateXPMagnet(World& w, float dt) {
@@ -264,14 +316,10 @@ void updateXPMagnet(World& w, float dt) {
             const float dx = ppos.x - pos.x;
             const float dy = ppos.y - pos.y;
             const float d2 = dx * dx + dy * dy;
-            if (d2 > r2) {
-                vel.x = 0.0f; vel.y = 0.0f;
-                return;
-            }
+            if (d2 > r2) { vel.x = vel.y = 0.0f; return; }
             const float len = std::sqrt(d2);
             if (len < 1e-4f) { vel.x = vel.y = 0.0f; return; }
-            // Чем ближе — тем быстрее (плавное ускорение)
-            const float t = 1.0f - (len / radius);   // 0..1
+            const float t = 1.0f - (len / radius);
             const float sp = speed * (0.35f + 0.65f * t);
             vel.x = dx / len * sp;
             vel.y = dy / len * sp;
@@ -319,6 +367,20 @@ void checkLevelUp(World& w) {
 }
 
 // ---------------------------------------------------------------- render
+
+void renderAura(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<AuraWeapon, Position>(pe)) return;
+
+    const auto& aura = w.registry.get<AuraWeapon>(pe);
+    const auto& pos  = w.registry.get<Position>(pe);
+
+    // Заливка (полупрозрачная) + контур
+    DrawCircleV({ pos.x, pos.y }, aura.radius, Fade(aura.color, 0.35f));
+    DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y),
+                    aura.radius, Fade(aura.color, 0.9f));
+}
 
 void renderCircles(entt::registry& r) {
     r.view<Position, RenderCircle>(entt::exclude<Inactive>).each(

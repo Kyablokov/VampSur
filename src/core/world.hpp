@@ -32,4 +32,4 @@ struct World {
     void spawnPlayer();
 };
 
-} // namespace vk
+}

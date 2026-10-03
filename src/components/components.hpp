@@ -14,6 +14,7 @@ struct ContactDamage  { float value = 0.0f; };
 struct Invulnerability{ float remaining = 0.0f; };
 struct Damage         { float value = 0.0f; };
 struct Lifetime       { float remaining = 0.0f; };
+struct XPValue        { float value = 1.0f; };
 
 struct Weapon {
     float cooldown           = 0.6f;
@@ -26,6 +27,14 @@ struct Weapon {
     Color projectileColor    = {255, 220, 90, 255};
     int   projectileCount    = 1;
     float projectileSpread   = 0.15f;
+};
+
+struct AuraWeapon {
+    float radius       = 90.0f;
+    float damage       = 6.0f;
+    float tickInterval = 0.5f;
+    float timer        = 0.0f;
+    Color color        = {255, 200, 100, 60};
 };
 
 struct XPOrb        { float value = 1.0f; };

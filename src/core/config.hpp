@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <raylib.h>
 
 namespace vk {
@@ -21,12 +22,15 @@ struct PlayerConfig {
     float pickupRadius = 120.0f;
 };
 
-struct EnemyConfig {
-    float speed         = 90.0f;
-    float radius        = 10.0f;
-    Color color         = {200, 60, 60, 255};
-    float hp            = 20.0f;
-    float contactDamage = 8.0f;
+struct EnemyTypeConfig {
+    std::string id            = "grunt";
+    float       speed         = 90.0f;
+    float       radius        = 10.0f;
+    Color       color         = {200, 60, 60, 255};
+    float       hp            = 20.0f;
+    float       contactDamage = 8.0f;
+    float       xpValue       = 1.0f;
+    float       spawnWeight   = 1.0f;
 };
 
 struct WeaponConfig {
@@ -42,8 +46,14 @@ struct WeaponConfig {
     int   poolCapacity       = 400;
 };
 
+struct AuraConfig {
+    float baseRadius   = 90.0f;
+    float baseDamage   = 6.0f;
+    float tickInterval = 0.5f;
+    Color color        = {255, 200, 100, 60};
+};
+
 struct XPConfig {
-    float orbValue          = 1.0f;
     float orbRadius         = 5.0f;
     Color orbColor          = {100, 220, 255, 255};
     float magnetSpeed       = 480.0f;
@@ -70,20 +80,20 @@ struct WorldConfig {
 };
 
 struct GameConfig {
-    WindowConfig  window;
-    PlayerConfig  player;
-    EnemyConfig   enemy;
-    WeaponConfig  weapon;
-    XPConfig      xp;
-    SpawnerConfig spawner;
-    CombatConfig  combat;
-    WorldConfig   world;
+    WindowConfig               window;
+    PlayerConfig               player;
+    std::vector<EnemyTypeConfig> enemyTypes;
+    WeaponConfig               weapon;
+    AuraConfig                 aura;
+    XPConfig                   xp;
+    SpawnerConfig              spawner;
+    CombatConfig               combat;
+    WorldConfig                world;
 };
 
 GameConfig loadGameConfig(const std::string& path = "");
 void       saveGameConfig(const GameConfig& config, const std::string& path);
 
-// Требуемое XP для достижения уровня `level` (level >= 1).
 inline int xpNeededForLevel(const XPConfig& cfg, int level) {
     return cfg.baseRequirement + (level - 1) * cfg.requirementGrowth;
 }

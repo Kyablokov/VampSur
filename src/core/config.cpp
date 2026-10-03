@@ -39,10 +39,25 @@ std::string findConfigPath() {
     return "assets/config/game.json";
 }
 
+EnemyTypeConfig parseEnemyType(const json& e) {
+    EnemyTypeConfig cfg;
+    cfg.id            = e.value("id",             cfg.id);
+    cfg.speed         = e.value("speed",          cfg.speed);
+    cfg.radius        = e.value("radius",         cfg.radius);
+    cfg.hp            = e.value("hp",             cfg.hp);
+    cfg.contactDamage = e.value("contact_damage", cfg.contactDamage);
+    cfg.xpValue       = e.value("xp_value",       cfg.xpValue);
+    cfg.spawnWeight   = e.value("spawn_weight",   cfg.spawnWeight);
+    if (e.contains("color")) cfg.color = parseColor(e["color"], cfg.color);
+    return cfg;
+}
+
 } // namespace
 
 GameConfig loadGameConfig(const std::string& path) {
     GameConfig config;
+    config.enemyTypes.push_back(EnemyTypeConfig{});  // безопасный дефолт
+
     const std::string actualPath = path.empty() ? findConfigPath() : path;
     std::ifstream file(actualPath);
     if (!file.is_open()) {
@@ -73,13 +88,12 @@ GameConfig loadGameConfig(const std::string& path) {
         config.player.pickupRadius = p.value("pickup_radius", config.player.pickupRadius);
         if (p.contains("color")) config.player.color = parseColor(p["color"], config.player.color);
     }
-    if (j.contains("enemy")) {
-        const auto& e = j["enemy"];
-        config.enemy.speed         = e.value("speed",          config.enemy.speed);
-        config.enemy.radius        = e.value("radius",         config.enemy.radius);
-        config.enemy.hp            = e.value("hp",             config.enemy.hp);
-        config.enemy.contactDamage = e.value("contact_damage", config.enemy.contactDamage);
-        if (e.contains("color")) config.enemy.color = parseColor(e["color"], config.enemy.color);
+    if (j.contains("enemy_types") && j["enemy_types"].is_array()) {
+        config.enemyTypes.clear();
+        for (const auto& e : j["enemy_types"]) {
+            config.enemyTypes.push_back(parseEnemyType(e));
+        }
+        if (config.enemyTypes.empty()) config.enemyTypes.push_back(EnemyTypeConfig{});
     }
     if (j.contains("weapon")) {
         const auto& w = j["weapon"];
@@ -94,9 +108,15 @@ GameConfig loadGameConfig(const std::string& path) {
         config.weapon.poolCapacity       = w.value("pool_capacity",       config.weapon.poolCapacity);
         if (w.contains("projectile_color")) config.weapon.projectileColor = parseColor(w["projectile_color"], config.weapon.projectileColor);
     }
+    if (j.contains("aura")) {
+        const auto& a = j["aura"];
+        config.aura.baseRadius   = a.value("base_radius",   config.aura.baseRadius);
+        config.aura.baseDamage   = a.value("base_damage",   config.aura.baseDamage);
+        config.aura.tickInterval = a.value("tick_interval", config.aura.tickInterval);
+        if (a.contains("color")) config.aura.color = parseColor(a["color"], config.aura.color);
+    }
     if (j.contains("xp")) {
         const auto& x = j["xp"];
-        config.xp.orbValue          = x.value("orb_value",          config.xp.orbValue);
         config.xp.orbRadius         = x.value("orb_radius",         config.xp.orbRadius);
         config.xp.magnetSpeed       = x.value("magnet_speed",       config.xp.magnetSpeed);
         config.xp.poolCapacity      = x.value("pool_capacity",      config.xp.poolCapacity);
@@ -138,11 +158,16 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "pickup_radius", c.player.pickupRadius },
         { "color", colorToJson(c.player.color) },
     };
-    j["enemy"] = {
-        { "speed", c.enemy.speed }, { "radius", c.enemy.radius },
-        { "hp", c.enemy.hp }, { "contact_damage", c.enemy.contactDamage },
-        { "color", colorToJson(c.enemy.color) },
-    };
+    j["enemy_types"] = json::array();
+    for (const auto& e : c.enemyTypes) {
+        j["enemy_types"].push_back({
+            { "id", e.id }, { "speed", e.speed }, { "radius", e.radius },
+            { "color", colorToJson(e.color) }, { "hp", e.hp },
+            { "contact_damage", e.contactDamage },
+            { "xp_value", e.xpValue },
+            { "spawn_weight", e.spawnWeight },
+        });
+    }
     j["weapon"] = {
         { "cooldown", c.weapon.cooldown }, { "range", c.weapon.range },
         { "projectile_speed", c.weapon.projectileSpeed },
@@ -154,8 +179,14 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "projectile_spread", c.weapon.projectileSpread },
         { "pool_capacity", c.weapon.poolCapacity },
     };
+    j["aura"] = {
+        { "base_radius", c.aura.baseRadius },
+        { "base_damage", c.aura.baseDamage },
+        { "tick_interval", c.aura.tickInterval },
+        { "color", colorToJson(c.aura.color) },
+    };
     j["xp"] = {
-        { "orb_value", c.xp.orbValue }, { "orb_radius", c.xp.orbRadius },
+        { "orb_radius", c.xp.orbRadius },
         { "orb_color", colorToJson(c.xp.orbColor) },
         { "magnet_speed", c.xp.magnetSpeed },
         { "pool_capacity", c.xp.poolCapacity },

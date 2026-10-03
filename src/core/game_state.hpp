@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 
 namespace vk {
 
@@ -37,8 +39,10 @@ struct GameState {
     GameMode mode        = GameMode::Playing;
     uint64_t rngState    = 0x9E3779B97F4A7C15ull;
 
-    // Индексы в upgradePool() для текущего предложения
     std::array<int, 3> upgradeOffer = { -1, -1, -1 };
+
+    // id -> сколько раз взят
+    std::unordered_map<std::string, int> takenUpgrades;
 };
 
 }

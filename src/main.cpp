@@ -39,7 +39,6 @@ void drawWorldMarkers(float spacing, float range, Vector2 center, Color color) {
     }
 }
 
-// Полоска опыта сверху экрана.
 void drawXPBar(const World& w) {
     auto pv = w.registry.view<PlayerTag, XP>();
     if (pv.begin() == pv.end()) return;
@@ -57,6 +56,28 @@ void drawXPBar(const World& w) {
 
     DrawText(TextFormat("Lv %d", xp.level),
              static_cast<int>(margin) + 6, 30, 16, Color{ 180, 230, 255, 255 });
+}
+
+void drawUpgradeHUD(const World& w) {
+    if (w.state.takenUpgrades.empty()) return;
+
+    const int sw = w.config.window.width;
+    const int x  = sw - 240;
+    int y = 30;
+
+    DrawText("Upgrades:", x, y, 18, LIGHTGRAY);
+    y += 24;
+
+    const auto& pool = upgradePool();
+    for (const auto& up : pool) {
+        auto it = w.state.takenUpgrades.find(up.id);
+        if (it == w.state.takenUpgrades.end() || it->second <= 0) continue;
+
+        const Color c = Color{ 200, 210, 230, 255 };
+        DrawText(TextFormat("%s  x%d", up.name.c_str(), it->second),
+                 x, y, 16, c);
+        y += 20;
+    }
 }
 
 void drawHUD(const World& w) {
@@ -122,17 +143,14 @@ void drawUpgradeScreen(World& w) {
         DrawRectangleRec(r, bg);
         DrawRectangleLinesEx(r, 2.0f, border);
 
-        // Номер-хоткей сверху
         DrawText(TextFormat("[%d]", i + 1),
                  static_cast<int>(r.x) + 16, static_cast<int>(r.y) + 14,
                  22, Color{ 180, 200, 230, 255 });
 
-        // Название
         const int nameY = static_cast<int>(r.y) + 60;
         DrawText(up.name.c_str(),
                  static_cast<int>(r.x) + 20, nameY, 26, RAYWHITE);
 
-        // Описание (перенос по словам)
         DrawText(up.description.c_str(),
                  static_cast<int>(r.x) + 20, nameY + 50, 18, Color{ 180, 190, 210, 255 });
 
@@ -178,6 +196,7 @@ int main() {
                 rebuildSpatial   (world);
                 updateWeapons    (world, dt);
                 updateProjectiles(world, dt);
+                updateAura       (world, dt);
                 resolveProjectileHits(world);
                 resolveContactDamage (world, dt);
                 resolveXPPickup      (world);
@@ -196,7 +215,6 @@ int main() {
             }
         }
 
-        // Камера
         float playerX = 0.0f, playerY = 0.0f;
         world.registry.view<PlayerTag, Position>().each(
             [&](auto, const Position& pos) {
@@ -210,17 +228,17 @@ int main() {
         BeginMode2D(camera);
             drawGrid(static_cast<float>(config.world.gridSize), 5000.0f, config.world.gridColor);
             drawWorldMarkers(160.0f, 900.0f, { playerX, playerY }, Color{ 90, 90, 110, 255 });
+            renderAura(world);
             renderCircles(world.registry);
         EndMode2D();
 
-        // HUD
         DrawFPS(10, 10);
         DrawText("WASD / arrows - move", 10, 200, 18, LIGHTGRAY);
         DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 222, 18, LIME);
         drawXPBar(world);
         drawHUD(world);
+        drawUpgradeHUD(world);
 
-        // Overlays
         if (world.state.mode == GameMode::Upgrading) {
             drawUpgradeScreen(world);
         } else if (world.state.mode == GameMode::GameOver) {

@@ -19,11 +19,13 @@ void updateProjectiles(World& w, float dt);
 void resolveProjectileHits(World& w);
 void resolveContactDamage (World& w, float dt);
 
-// XP
+void updateAura       (World& w, float dt);
+
 void updateXPMagnet   (World& w, float dt);
 void resolveXPPickup  (World& w);
 void checkLevelUp     (World& w);
 
+void renderAura       (World& w);
 void renderCircles    (entt::registry& r);
 
 }

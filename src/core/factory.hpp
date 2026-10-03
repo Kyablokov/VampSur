@@ -11,6 +11,7 @@ inline entt::entity createPlayer(entt::registry& registry,
                                  const PlayerConfig&  pcfg,
                                  const CombatConfig&  ccfg,
                                  const WeaponConfig&  wcfg,
+                                 const AuraConfig&    acfg,
                                  const XPConfig&      xcfg) {
     const auto e = registry.create();
     registry.emplace<Position>     (e, pcfg.startX, pcfg.startY);
@@ -40,17 +41,27 @@ inline entt::entity createPlayer(entt::registry& registry,
     w.projectileSpread   = wcfg.projectileSpread;
     registry.emplace<Weapon>(e, w);
 
+    AuraWeapon aura;
+    aura.radius       = acfg.baseRadius;
+    aura.damage       = acfg.baseDamage;
+    aura.tickInterval = acfg.tickInterval;
+    aura.timer        = 0.0f;
+    aura.color        = acfg.color;
+    registry.emplace<AuraWeapon>(e, aura);
+
     return e;
 }
 
 inline void configureEnemy(entt::registry& r, entt::entity e,
-                           float x, float y, const EnemyConfig& cfg) {
+                           float x, float y,
+                           const EnemyTypeConfig& cfg) {
     r.replace<Position>     (e, x, y);
     r.replace<Velocity>     (e, 0.0f, 0.0f);
     r.replace<Speed>        (e, cfg.speed);
     r.replace<RenderCircle> (e, cfg.radius, cfg.color);
     r.replace<Health>       (e, cfg.hp, cfg.hp);
     r.replace<ContactDamage>(e, cfg.contactDamage);
+    r.replace<XPValue>      (e, cfg.xpValue);
 }
 
 inline void configureProjectile(entt::registry& r, entt::entity e,
@@ -72,4 +83,4 @@ inline void configureXPOrb(entt::registry& r, entt::entity e,
     r.replace<XPOrb>        (e, value);
 }
 
-} // namespace vk
+}

@@ -17,6 +17,7 @@ World::World(GameConfig cfg)
                   r.emplace<RenderCircle>(e);
                   r.emplace<Health>(e);
                   r.emplace<ContactDamage>(e);
+                  r.emplace<XPValue>(e);
               })
     , projectiles(registry,
                   static_cast<std::size_t>(config.weapon.poolCapacity),
@@ -40,7 +41,8 @@ World::World(GameConfig cfg)
 }
 
 void World::spawnPlayer() {
-    createPlayer(registry, config.player, config.combat, config.weapon, config.xp);
+    createPlayer(registry, config.player, config.combat,
+                 config.weapon, config.aura, config.xp);
 }
 
 void World::reset() {
@@ -60,7 +62,6 @@ void World::reset() {
         [&](auto e) { toRelease.push_back(e); });
     for (auto e : toRelease) xpOrbs.release(e);
 
-    // Полностью пересоздаём игрока — это сбрасывает все апгрейды
     if (auto pe = findPlayer(registry); pe != entt::null) {
         registry.destroy(pe);
     }
