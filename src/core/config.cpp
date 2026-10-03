@@ -66,10 +66,11 @@ GameConfig loadGameConfig(const std::string& path) {
     }
     if (j.contains("player")) {
         const auto& p = j["player"];
-        config.player.speed  = p.value("speed",   config.player.speed);
-        config.player.radius = p.value("radius",  config.player.radius);
-        config.player.startX = p.value("start_x", config.player.startX);
-        config.player.startY = p.value("start_y", config.player.startY);
+        config.player.speed        = p.value("speed",         config.player.speed);
+        config.player.radius       = p.value("radius",        config.player.radius);
+        config.player.startX       = p.value("start_x",       config.player.startX);
+        config.player.startY       = p.value("start_y",       config.player.startY);
+        config.player.pickupRadius = p.value("pickup_radius", config.player.pickupRadius);
         if (p.contains("color")) config.player.color = parseColor(p["color"], config.player.color);
     }
     if (j.contains("enemy")) {
@@ -88,8 +89,20 @@ GameConfig loadGameConfig(const std::string& path) {
         config.weapon.projectileDamage   = w.value("projectile_damage",   config.weapon.projectileDamage);
         config.weapon.projectileLifetime = w.value("projectile_lifetime", config.weapon.projectileLifetime);
         config.weapon.projectileRadius   = w.value("projectile_radius",   config.weapon.projectileRadius);
+        config.weapon.projectileCount    = w.value("projectile_count",    config.weapon.projectileCount);
+        config.weapon.projectileSpread   = w.value("projectile_spread",   config.weapon.projectileSpread);
         config.weapon.poolCapacity       = w.value("pool_capacity",       config.weapon.poolCapacity);
         if (w.contains("projectile_color")) config.weapon.projectileColor = parseColor(w["projectile_color"], config.weapon.projectileColor);
+    }
+    if (j.contains("xp")) {
+        const auto& x = j["xp"];
+        config.xp.orbValue          = x.value("orb_value",          config.xp.orbValue);
+        config.xp.orbRadius         = x.value("orb_radius",         config.xp.orbRadius);
+        config.xp.magnetSpeed       = x.value("magnet_speed",       config.xp.magnetSpeed);
+        config.xp.poolCapacity      = x.value("pool_capacity",      config.xp.poolCapacity);
+        config.xp.baseRequirement   = x.value("base_requirement",   config.xp.baseRequirement);
+        config.xp.requirementGrowth = x.value("requirement_growth", config.xp.requirementGrowth);
+        if (x.contains("orb_color")) config.xp.orbColor = parseColor(x["orb_color"], config.xp.orbColor);
     }
     if (j.contains("spawner")) {
         const auto& s = j["spawner"];
@@ -122,6 +135,7 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
     j["player"] = {
         { "speed", c.player.speed }, { "radius", c.player.radius },
         { "start_x", c.player.startX }, { "start_y", c.player.startY },
+        { "pickup_radius", c.player.pickupRadius },
         { "color", colorToJson(c.player.color) },
     };
     j["enemy"] = {
@@ -136,7 +150,17 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "projectile_lifetime", c.weapon.projectileLifetime },
         { "projectile_radius", c.weapon.projectileRadius },
         { "projectile_color", colorToJson(c.weapon.projectileColor) },
+        { "projectile_count", c.weapon.projectileCount },
+        { "projectile_spread", c.weapon.projectileSpread },
         { "pool_capacity", c.weapon.poolCapacity },
+    };
+    j["xp"] = {
+        { "orb_value", c.xp.orbValue }, { "orb_radius", c.xp.orbRadius },
+        { "orb_color", colorToJson(c.xp.orbColor) },
+        { "magnet_speed", c.xp.magnetSpeed },
+        { "pool_capacity", c.xp.poolCapacity },
+        { "base_requirement", c.xp.baseRequirement },
+        { "requirement_growth", c.xp.requirementGrowth },
     };
     j["spawner"] = {
         { "interval", c.spawner.interval },

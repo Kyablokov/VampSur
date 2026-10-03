@@ -45,6 +45,7 @@ add_executable(vampire_like
     src/main.cpp
     src/core/config.cpp
     src/core/world.cpp
+    src/core/upgrades.cpp
     src/systems/systems.cpp
 )
 

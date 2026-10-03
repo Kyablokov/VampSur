@@ -5,6 +5,7 @@
 
 #include "components/components.hpp"
 #include "core/factory.hpp"
+#include "core/upgrades.hpp"
 
 namespace vk {
 
@@ -42,22 +43,18 @@ void updateMovement(World& w, float dt) {
 // ---------------------------------------------------------------- spawner
 
 void spawnEnemies(World& w, float dt) {
-    if (w.state.gameOver) return;
-
     w.state.spawnTimer -= dt;
     if (w.state.spawnTimer > 0.0f) return;
     w.state.spawnTimer = w.config.spawner.interval;
 
-    // Позиция игрока
-    auto pv = w.registry.view<PlayerTag, Position>();
-    if (pv.begin() == pv.end()) return;
-    const auto& ppos = w.registry.get<Position>(*pv.begin());
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    const auto& ppos = w.registry.get<Position>(pe);
 
-    // Лимит одновременных врагов
     if (w.enemies.active() >= static_cast<std::size_t>(w.config.spawner.maxEnemies)) return;
 
     const auto e = w.enemies.acquire();
-    if (e == entt::null) return; // пул исчерпан
+    if (e == entt::null) return;
 
     const float angle = randRange(w.state.rngState, 0.0f, 6.2831853f);
     const float dist  = w.config.spawner.distance;
@@ -70,9 +67,9 @@ void spawnEnemies(World& w, float dt) {
 // ---------------------------------------------------------------- AI
 
 void chasePlayer(World& w, float /*dt*/) {
-    auto pv = w.registry.view<PlayerTag, Position>();
-    if (pv.begin() == pv.end()) return;
-    const auto& ppos = w.registry.get<Position>(*pv.begin());
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    const auto& ppos = w.registry.get<Position>(pe);
 
     w.registry.view<EnemyTag, Position, Velocity, Speed>(entt::exclude<Inactive>).each(
         [&](auto, const Position& pos, Velocity& vel, const Speed& speed) {
@@ -99,12 +96,12 @@ void rebuildSpatial(World& w) {
 // ---------------------------------------------------------------- weapons
 
 void updateWeapons(World& w, float dt) {
-    auto pv = w.registry.view<PlayerTag, Position, Weapon>();
-    if (pv.begin() == pv.end()) return;
-    const auto pe = *pv.begin();
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Weapon, Position>(pe)) return;
 
-    auto& ppos   = w.registry.get<Position>(pe);
     auto& weapon = w.registry.get<Weapon>(pe);
+    auto& ppos   = w.registry.get<Position>(pe);
 
     weapon.timer -= dt;
     if (weapon.timer > 0.0f) return;
@@ -129,20 +126,25 @@ void updateWeapons(World& w, float dt) {
     if (target == entt::null) return;
 
     const auto& tp = w.registry.get<Position>(target);
-    float dx = tp.x - ppos.x;
-    float dy = tp.y - ppos.y;
-    const float len = std::sqrt(dx * dx + dy * dy);
-    if (len < 1e-4f) return;
-    dx /= len; dy /= len;
+    const float baseAngle = std::atan2(tp.y - ppos.y, tp.x - ppos.x);
 
-    const auto proj = w.projectiles.acquire();
-    if (proj == entt::null) return; // пул снарядов исчерпан
+    const int shots = (weapon.projectileCount < 1) ? 1 : weapon.projectileCount;
+    const float spreadStep  = weapon.projectileSpread;
+    const float startOffset = -spreadStep * (shots - 1) * 0.5f;
 
-    configureProjectile(w.registry, proj,
-                        ppos.x, ppos.y,
-                        dx * weapon.projectileSpeed,
-                        dy * weapon.projectileSpeed,
-                        weapon);
+    for (int i = 0; i < shots; ++i) {
+        const float ang = baseAngle + startOffset + spreadStep * i;
+        const float ax = std::cos(ang);
+        const float ay = std::sin(ang);
+
+        const auto proj = w.projectiles.acquire();
+        if (proj == entt::null) break;
+        configureProjectile(w.registry, proj,
+                            ppos.x, ppos.y,
+                            ax * weapon.projectileSpeed,
+                            ay * weapon.projectileSpeed,
+                            weapon);
+    }
 }
 
 // ---------------------------------------------------------------- projectiles
@@ -182,24 +184,32 @@ void resolveProjectileHits(World& w) {
                 if (hp.current <= 0.0f) killedEnemies.push_back(e);
 
                 hitProjectiles.push_back(proj);
-                break; // один снаряд = один враг
+                break;
             }
         });
 
-    for (auto e : killedEnemies) w.enemies.release(e);
+    // Дропаем XP до того, как отпустим врагов в пул
+    for (auto e : killedEnemies) {
+        const auto& pos = w.registry.get<Position>(e);
+        const auto orb = w.xpOrbs.acquire();
+        if (orb != entt::null) {
+            configureXPOrb(w.registry, orb, pos.x, pos.y,
+                           w.config.xp.orbValue, w.config.xp);
+        }
+        w.enemies.release(e);
+    }
     for (auto p : hitProjectiles) w.projectiles.release(p);
 }
 
 // ---------------------------------------------------------------- contact damage
 
 void resolveContactDamage(World& w, float dt) {
-    // Тикаем неуязвимость
     w.registry.view<Invulnerability>().each(
         [&](auto, Invulnerability& inv) { inv.remaining -= dt; });
 
-    auto pv = w.registry.view<PlayerTag, Position, Health, RenderCircle>();
-    if (pv.begin() == pv.end()) return;
-    const auto pe = *pv.begin();
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, Health, RenderCircle>(pe)) return;
 
     const bool isInvuln = w.registry.all_of<Invulnerability>(pe) &&
                           w.registry.get<Invulnerability>(pe).remaining > 0.0f;
@@ -233,8 +243,79 @@ void resolveContactDamage(World& w, float dt) {
 
     if (hp.current <= 0.0f) {
         hp.current = 0.0f;
-        w.state.gameOver = true;
+        w.state.mode = GameMode::GameOver;
     }
+}
+
+// ---------------------------------------------------------------- XP
+
+void updateXPMagnet(World& w, float dt) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, PickupRadius>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const float radius = w.registry.get<PickupRadius>(pe).value;
+    const float r2 = radius * radius;
+    const float speed = w.config.xp.magnetSpeed;
+
+    w.registry.view<XPOrbTag, Position, Velocity>(entt::exclude<Inactive>).each(
+        [&](auto, Position& pos, Velocity& vel) {
+            const float dx = ppos.x - pos.x;
+            const float dy = ppos.y - pos.y;
+            const float d2 = dx * dx + dy * dy;
+            if (d2 > r2) {
+                vel.x = 0.0f; vel.y = 0.0f;
+                return;
+            }
+            const float len = std::sqrt(d2);
+            if (len < 1e-4f) { vel.x = vel.y = 0.0f; return; }
+            // Чем ближе — тем быстрее (плавное ускорение)
+            const float t = 1.0f - (len / radius);   // 0..1
+            const float sp = speed * (0.35f + 0.65f * t);
+            vel.x = dx / len * sp;
+            vel.y = dy / len * sp;
+        });
+}
+
+void resolveXPPickup(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, RenderCircle, XP>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const auto& prc  = w.registry.get<RenderCircle>(pe);
+    auto& xp = w.registry.get<XP>(pe);
+
+    std::vector<entt::entity> picked;
+    w.registry.view<XPOrbTag, Position, RenderCircle, XPOrb>(entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, const XPOrb& orb) {
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r = prc.radius + rc.radius + 2.0f;
+            if (dx * dx + dy * dy <= r * r) {
+                xp.current += orb.value;
+                picked.push_back(e);
+            }
+        });
+
+    for (auto e : picked) w.xpOrbs.release(e);
+}
+
+void checkLevelUp(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<XP>(pe)) return;
+
+    auto& xp = w.registry.get<XP>(pe);
+    if (xp.current < xp.needed) return;
+
+    xp.current -= xp.needed;
+    xp.level  += 1;
+    xp.needed  = static_cast<float>(xpNeededForLevel(w.config.xp, xp.level));
+
+    rollUpgrades(w);
+    w.state.mode = GameMode::Upgrading;
 }
 
 // ---------------------------------------------------------------- render

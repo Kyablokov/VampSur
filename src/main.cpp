@@ -6,6 +6,7 @@
 #include "components/components.hpp"
 #include "core/config.hpp"
 #include "core/game_state.hpp"
+#include "core/upgrades.hpp"
 #include "core/world.hpp"
 #include "systems/systems.hpp"
 
@@ -38,11 +39,31 @@ void drawWorldMarkers(float spacing, float range, Vector2 center, Color color) {
     }
 }
 
+// Полоска опыта сверху экрана.
+void drawXPBar(const World& w) {
+    auto pv = w.registry.view<PlayerTag, XP>();
+    if (pv.begin() == pv.end()) return;
+    const auto& xp = pv.get<XP>(*pv.begin());
+
+    const float margin = 20.0f;
+    const float barW   = static_cast<float>(w.config.window.width) - margin * 2.0f;
+    const float barH   = 14.0f;
+    const float frac   = (xp.needed > 0.0f) ? (xp.current / xp.needed) : 0.0f;
+
+    DrawRectangle(static_cast<int>(margin), 10, static_cast<int>(barW), static_cast<int>(barH), Fade(BLACK, 0.6f));
+    DrawRectangle(static_cast<int>(margin) + 1, 11,
+                  static_cast<int>((barW - 2) * frac), static_cast<int>(barH) - 2,
+                  Color{ 100, 220, 255, 255 });
+
+    DrawText(TextFormat("Lv %d", xp.level),
+             static_cast<int>(margin) + 6, 30, 16, Color{ 180, 230, 255, 255 });
+}
+
 void drawHUD(const World& w) {
     const int minutes = static_cast<int>(w.state.timeSeconds) / 60;
     const int seconds = static_cast<int>(w.state.timeSeconds) % 60;
     DrawText(TextFormat("%02d:%02d", minutes, seconds),
-             w.config.window.width / 2 - 40, 20, 34, RAYWHITE);
+             w.config.window.width / 2 - 40, 30, 34, RAYWHITE);
 
     DrawText(TextFormat("Enemies: %zu / %zu",
                         w.enemies.active(), w.enemies.capacity()),
@@ -50,15 +71,75 @@ void drawHUD(const World& w) {
     DrawText(TextFormat("Projectiles: %zu / %zu",
                         w.projectiles.active(), w.projectiles.capacity()),
              10, 104, 16, ORANGE);
+    DrawText(TextFormat("XP orbs: %zu / %zu",
+                        w.xpOrbs.active(), w.xpOrbs.capacity()),
+             10, 122, 16, ORANGE);
 
     auto pv = w.registry.view<PlayerTag, Health>();
     if (pv.begin() != pv.end()) {
         const auto& hp = pv.get<Health>(*pv.begin());
         const float frac = (hp.max > 0.0f) ? (hp.current / hp.max) : 0.0f;
-        DrawRectangle(10, 130, 202, 22, Fade(BLACK, 0.6f));
-        DrawRectangle(11, 131, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
+        DrawRectangle(10, 148, 202, 22, Fade(BLACK, 0.6f));
+        DrawRectangle(11, 149, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
-                 16, 134, 16, RAYWHITE);
+                 16, 152, 16, RAYWHITE);
+    }
+}
+
+Rectangle cardRect(int slot, int screenW, int screenH) {
+    constexpr float cardW = 340.0f;
+    constexpr float cardH = 380.0f;
+    constexpr float gap   = 40.0f;
+    const float total = cardW * 3 + gap * 2;
+    const float startX = (screenW - total) * 0.5f;
+    const float y = (screenH - cardH) * 0.5f + 40.0f;
+    return { startX + slot * (cardW + gap), y, cardW, cardH };
+}
+
+void drawUpgradeScreen(World& w) {
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+
+    DrawRectangle(0, 0, sw, sh, Fade(BLACK, 0.75f));
+
+    const char* title = "LEVEL UP!";
+    DrawText(title, sw/2 - MeasureText(title, 48)/2, 90, 48, GOLD);
+
+    const auto& pool = upgradePool();
+    const Vector2 mouse = GetMousePosition();
+
+    for (int i = 0; i < 3; ++i) {
+        const int idx = w.state.upgradeOffer[i];
+        if (idx < 0 || idx >= static_cast<int>(pool.size())) continue;
+
+        const auto& up = pool[idx];
+        const Rectangle r = cardRect(i, sw, sh);
+        const bool hovered = CheckCollisionPointRec(mouse, r);
+
+        const Color bg     = hovered ? Color{ 40, 45, 60, 255 } : Color{ 26, 30, 42, 255 };
+        const Color border = hovered ? GOLD : Color{ 80, 90, 110, 255 };
+
+        DrawRectangleRec(r, bg);
+        DrawRectangleLinesEx(r, 2.0f, border);
+
+        // Номер-хоткей сверху
+        DrawText(TextFormat("[%d]", i + 1),
+                 static_cast<int>(r.x) + 16, static_cast<int>(r.y) + 14,
+                 22, Color{ 180, 200, 230, 255 });
+
+        // Название
+        const int nameY = static_cast<int>(r.y) + 60;
+        DrawText(up.name.c_str(),
+                 static_cast<int>(r.x) + 20, nameY, 26, RAYWHITE);
+
+        // Описание (перенос по словам)
+        DrawText(up.description.c_str(),
+                 static_cast<int>(r.x) + 20, nameY + 50, 18, Color{ 180, 190, 210, 255 });
+
+        if (CheckCollisionPointRec(mouse, r) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            chooseUpgrade(w, i);
+            return;
+        }
     }
 }
 
@@ -84,21 +165,35 @@ int main() {
     while (!WindowShouldClose()) {
         const float dt = GetFrameTime();
 
-        if (world.state.gameOver) {
-            if (IsKeyPressed(KEY_SPACE)) world.reset();
-        } else {
-            world.state.timeSeconds += dt;
+        switch (world.state.mode) {
+            case GameMode::Playing: {
+                world.state.timeSeconds += dt;
 
-            updateInput      (world, dt);
-            spawnEnemies     (world, dt);
-            chasePlayer      (world, dt);
-            updateMovement   (world, dt);
+                updateInput      (world, dt);
+                spawnEnemies     (world, dt);
+                chasePlayer      (world, dt);
+                updateXPMagnet   (world, dt);
+                updateMovement   (world, dt);
 
-            rebuildSpatial   (world);       // актуальные позиции врагов
-            updateWeapons    (world, dt);   // спавн снарядов (с velocity на след. кадр)
-            updateProjectiles(world, dt);   // тик лайфтаймов
-            resolveProjectileHits(world);   // столкновения снаряд↔враг
-            resolveContactDamage (world, dt);
+                rebuildSpatial   (world);
+                updateWeapons    (world, dt);
+                updateProjectiles(world, dt);
+                resolveProjectileHits(world);
+                resolveContactDamage (world, dt);
+                resolveXPPickup      (world);
+                checkLevelUp         (world);
+                break;
+            }
+            case GameMode::Upgrading: {
+                if (IsKeyPressed(KEY_ONE))   chooseUpgrade(world, 0);
+                if (IsKeyPressed(KEY_TWO))   chooseUpgrade(world, 1);
+                if (IsKeyPressed(KEY_THREE)) chooseUpgrade(world, 2);
+                break;
+            }
+            case GameMode::GameOver: {
+                if (IsKeyPressed(KEY_SPACE)) world.reset();
+                break;
+            }
         }
 
         // Камера
@@ -118,12 +213,17 @@ int main() {
             renderCircles(world.registry);
         EndMode2D();
 
+        // HUD
         DrawFPS(10, 10);
-        DrawText("WASD / arrows - move", 10, 34, 18, LIGHTGRAY);
-        DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 58, 18, LIME);
+        DrawText("WASD / arrows - move", 10, 200, 18, LIGHTGRAY);
+        DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 222, 18, LIME);
+        drawXPBar(world);
         drawHUD(world);
 
-        if (world.state.gameOver) {
+        // Overlays
+        if (world.state.mode == GameMode::Upgrading) {
+            drawUpgradeScreen(world);
+        } else if (world.state.mode == GameMode::GameOver) {
             DrawRectangle(0, 0, config.window.width, config.window.height, Fade(BLACK, 0.65f));
             DrawText("GAME OVER",
                      config.window.width / 2 - 130,

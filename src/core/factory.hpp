@@ -10,14 +10,22 @@ namespace vk {
 inline entt::entity createPlayer(entt::registry& registry,
                                  const PlayerConfig&  pcfg,
                                  const CombatConfig&  ccfg,
-                                 const WeaponConfig&  wcfg) {
+                                 const WeaponConfig&  wcfg,
+                                 const XPConfig&      xcfg) {
     const auto e = registry.create();
     registry.emplace<Position>     (e, pcfg.startX, pcfg.startY);
     registry.emplace<Velocity>     (e, 0.0f, 0.0f);
     registry.emplace<Speed>        (e, pcfg.speed);
     registry.emplace<RenderCircle> (e, pcfg.radius, pcfg.color);
     registry.emplace<Health>       (e, ccfg.playerHp, ccfg.playerHp);
+    registry.emplace<PickupRadius> (e, pcfg.pickupRadius);
     registry.emplace<PlayerTag>    (e);
+
+    XP xp;
+    xp.level   = 1;
+    xp.current = 0.0f;
+    xp.needed  = static_cast<float>(xpNeededForLevel(xcfg, 1));
+    registry.emplace<XP>(e, xp);
 
     Weapon w;
     w.cooldown           = wcfg.cooldown;
@@ -28,11 +36,13 @@ inline entt::entity createPlayer(entt::registry& registry,
     w.projectileLifetime = wcfg.projectileLifetime;
     w.projectileRadius   = wcfg.projectileRadius;
     w.projectileColor    = wcfg.projectileColor;
+    w.projectileCount    = wcfg.projectileCount;
+    w.projectileSpread   = wcfg.projectileSpread;
     registry.emplace<Weapon>(e, w);
+
     return e;
 }
 
-// Заполняет компоненты сущности врага из пула. Тег EnemyTag и Inactive уже стоят.
 inline void configureEnemy(entt::registry& r, entt::entity e,
                            float x, float y, const EnemyConfig& cfg) {
     r.replace<Position>     (e, x, y);
@@ -43,7 +53,6 @@ inline void configureEnemy(entt::registry& r, entt::entity e,
     r.replace<ContactDamage>(e, cfg.contactDamage);
 }
 
-// Заполняет компоненты снаряда из пула.
 inline void configureProjectile(entt::registry& r, entt::entity e,
                                 float x, float y, float vx, float vy,
                                 const Weapon& w) {
@@ -52,6 +61,15 @@ inline void configureProjectile(entt::registry& r, entt::entity e,
     r.replace<RenderCircle> (e, w.projectileRadius, w.projectileColor);
     r.replace<Damage>       (e, w.projectileDamage);
     r.replace<Lifetime>     (e, w.projectileLifetime);
+}
+
+inline void configureXPOrb(entt::registry& r, entt::entity e,
+                           float x, float y, float value,
+                           const XPConfig& cfg) {
+    r.replace<Position>     (e, x, y);
+    r.replace<Velocity>     (e, 0.0f, 0.0f);
+    r.replace<RenderCircle> (e, cfg.orbRadius, cfg.orbColor);
+    r.replace<XPOrb>        (e, value);
 }
 
 } // namespace vk

@@ -9,9 +9,6 @@
 
 namespace vk {
 
-// Универсальный пул сущностей с тегом Tag.
-// Prewarm-функция вызывается для каждой сущности при создании пула
-// и должна добавить все компоненты, кроме Tag и Inactive.
 template <typename Tag>
 class EntityPool {
 public:
@@ -29,7 +26,6 @@ public:
         }
     }
 
-    // Возвращает свободную сущность или entt::null, если пул исчерпан.
     entt::entity acquire() {
         if (freeList_.empty()) return entt::null;
         const auto e = freeList_.back();

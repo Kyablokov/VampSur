@@ -10,7 +10,11 @@
 
 namespace vk {
 
-// Всё состояние мира в одном месте — чтобы системы принимали один аргумент.
+inline entt::entity findPlayer(entt::registry& r) {
+    auto v = r.view<PlayerTag>();
+    return v.begin() == v.end() ? entt::null : *v.begin();
+}
+
 struct World {
     entt::registry registry;
     GameConfig     config;
@@ -18,15 +22,13 @@ struct World {
 
     EntityPool<EnemyTag>      enemies;
     EntityPool<ProjectileTag> projectiles;
+    EntityPool<XPOrbTag>      xpOrbs;
 
     SpatialHash enemySpatial;
 
     explicit World(GameConfig cfg);
 
-    // Сброс партии: все пулы — в исходное, игрок восстановлен, таймеры в 0.
     void reset();
-
-    // Создаёт игрока (один раз при инициализации).
     void spawnPlayer();
 };
 

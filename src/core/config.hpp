@@ -13,11 +13,12 @@ struct WindowConfig {
 };
 
 struct PlayerConfig {
-    float speed  = 220.0f;
-    float radius = 14.0f;
-    float startX = 0.0f;
-    float startY = 0.0f;
-    Color color  = {80, 200, 120, 255};
+    float speed        = 220.0f;
+    float radius       = 14.0f;
+    float startX       = 0.0f;
+    float startY       = 0.0f;
+    Color color        = {80, 200, 120, 255};
+    float pickupRadius = 120.0f;
 };
 
 struct EnemyConfig {
@@ -36,7 +37,19 @@ struct WeaponConfig {
     float projectileLifetime = 1.5f;
     float projectileRadius   = 4.0f;
     Color projectileColor    = {255, 220, 90, 255};
+    int   projectileCount    = 1;
+    float projectileSpread   = 0.15f;
     int   poolCapacity       = 400;
+};
+
+struct XPConfig {
+    float orbValue          = 1.0f;
+    float orbRadius         = 5.0f;
+    Color orbColor          = {100, 220, 255, 255};
+    float magnetSpeed       = 480.0f;
+    int   poolCapacity      = 800;
+    int   baseRequirement   = 5;
+    int   requirementGrowth = 4;
 };
 
 struct SpawnerConfig {
@@ -61,6 +74,7 @@ struct GameConfig {
     PlayerConfig  player;
     EnemyConfig   enemy;
     WeaponConfig  weapon;
+    XPConfig      xp;
     SpawnerConfig spawner;
     CombatConfig  combat;
     WorldConfig   world;
@@ -68,5 +82,10 @@ struct GameConfig {
 
 GameConfig loadGameConfig(const std::string& path = "");
 void       saveGameConfig(const GameConfig& config, const std::string& path);
+
+// Требуемое XP для достижения уровня `level` (level >= 1).
+inline int xpNeededForLevel(const XPConfig& cfg, int level) {
+    return cfg.baseRequirement + (level - 1) * cfg.requirementGrowth;
+}
 
 }

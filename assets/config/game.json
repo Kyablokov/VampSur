@@ -10,7 +10,8 @@
     "radius": 14.0,
     "start_x": 0.0,
     "start_y": 0.0,
-    "color": [80, 200, 120, 255]
+    "color": [80, 200, 120, 255],
+    "pickup_radius": 120.0
   },
   "enemy": {
     "speed": 90.0,
@@ -27,7 +28,18 @@
     "projectile_lifetime": 1.5,
     "projectile_radius": 4.0,
     "projectile_color": [255, 220, 90, 255],
+    "projectile_count": 1,
+    "projectile_spread": 0.15,
     "pool_capacity": 400
+  },
+  "xp": {
+    "orb_value": 1,
+    "orb_radius": 5.0,
+    "orb_color": [100, 220, 255, 255],
+    "magnet_speed": 480.0,
+    "pool_capacity": 800,
+    "base_requirement": 5,
+    "requirement_growth": 4
   },
   "spawner": {
     "interval": 0.7,
