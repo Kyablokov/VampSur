@@ -37,6 +37,21 @@ struct AuraWeapon {
     Color color        = {255, 200, 100, 60};
 };
 
+struct OrbitWeapon {
+    int   count            = 2;
+    float radius           = 70.0f;
+    float damage           = 8.0f;
+    float angularSpeed     = 3.0f;      // радиан / сек
+    float projectileRadius = 6.0f;
+    float hitCooldown      = 0.4f;      // секунд между попаданиями по одному врагу
+    float currentAngle     = 0.0f;
+    Color color            = {180, 120, 255, 255};
+};
+
+// Персональный кулдаун попадания орбитального снаряда.
+// Ставится каждому врагу в prewarm пула.
+struct OrbitHitCooldown { float remaining = 0.0f; };
+
 struct XPOrb        { float value = 1.0f; };
 struct XP           { int level = 1; float current = 0.0f; float needed = 5.0f; };
 struct PickupRadius { float value = 120.0f; };

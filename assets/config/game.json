@@ -14,36 +14,9 @@
     "pickup_radius": 120.0
   },
   "enemy_types": [
-    {
-      "id": "grunt",
-      "speed": 90.0,
-      "radius": 10.0,
-      "color": [200, 60, 60, 255],
-      "hp": 20.0,
-      "contact_damage": 8.0,
-      "xp_value": 1.0,
-      "spawn_weight": 70.0
-    },
-    {
-      "id": "runner",
-      "speed": 180.0,
-      "radius": 7.0,
-      "color": [255, 140, 60, 255],
-      "hp": 10.0,
-      "contact_damage": 6.0,
-      "xp_value": 1.0,
-      "spawn_weight": 22.0
-    },
-    {
-      "id": "tank",
-      "speed": 50.0,
-      "radius": 18.0,
-      "color": [160, 70, 220, 255],
-      "hp": 80.0,
-      "contact_damage": 15.0,
-      "xp_value": 5.0,
-      "spawn_weight": 8.0
-    }
+    { "id": "grunt",  "speed": 90.0,  "radius": 10.0, "color": [200, 60, 60, 255],   "hp": 20.0, "contact_damage": 8.0,  "xp_value": 1.0, "spawn_weight": 70.0 },
+    { "id": "runner", "speed": 180.0, "radius": 7.0,  "color": [255, 140, 60, 255],  "hp": 10.0, "contact_damage": 6.0,  "xp_value": 1.0, "spawn_weight": 22.0 },
+    { "id": "tank",   "speed": 50.0,  "radius": 18.0, "color": [160, 70, 220, 255],  "hp": 80.0, "contact_damage": 15.0, "xp_value": 5.0, "spawn_weight": 8.0  }
   ],
   "weapon": {
     "cooldown": 0.6,
@@ -63,6 +36,15 @@
     "tick_interval": 0.5,
     "color": [255, 200, 100, 60]
   },
+  "orbit": {
+    "base_count": 2,
+    "base_radius": 70.0,
+    "base_damage": 8.0,
+    "angular_speed": 3.0,
+    "projectile_radius": 6.0,
+    "hit_cooldown": 0.4,
+    "color": [180, 120, 255, 255]
+  },
   "xp": {
     "orb_radius": 5.0,
     "orb_color": [100, 220, 255, 255],
@@ -71,18 +53,7 @@
     "base_requirement": 5,
     "requirement_growth": 4
   },
-  "spawner": {
-    "interval": 0.7,
-    "distance": 700.0,
-    "max_enemies": 500
-  },
-  "combat": {
-    "player_hp": 100.0,
-    "player_invuln_time": 0.6
-  },
-  "world": {
-    "grid_size": 64,
-    "background_color": [18, 18, 24, 255],
-    "grid_color": [55, 55, 75, 255]
-  }
+  "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
+  "combat":  { "player_hp": 100.0, "player_invuln_time": 0.6 },
+  "world":   { "grid_size": 64, "background_color": [18, 18, 24, 255], "grid_color": [55, 55, 75, 255] }
 }

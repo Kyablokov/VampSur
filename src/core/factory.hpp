@@ -12,6 +12,7 @@ inline entt::entity createPlayer(entt::registry& registry,
                                  const CombatConfig&  ccfg,
                                  const WeaponConfig&  wcfg,
                                  const AuraConfig&    acfg,
+                                 const OrbitConfig&   ocfg,
                                  const XPConfig&      xcfg) {
     const auto e = registry.create();
     registry.emplace<Position>     (e, pcfg.startX, pcfg.startY);
@@ -49,6 +50,17 @@ inline entt::entity createPlayer(entt::registry& registry,
     aura.color        = acfg.color;
     registry.emplace<AuraWeapon>(e, aura);
 
+    OrbitWeapon orbit;
+    orbit.count            = ocfg.baseCount;
+    orbit.radius           = ocfg.baseRadius;
+    orbit.damage           = ocfg.baseDamage;
+    orbit.angularSpeed     = ocfg.angularSpeed;
+    orbit.projectileRadius = ocfg.projectileRadius;
+    orbit.hitCooldown      = ocfg.hitCooldown;
+    orbit.currentAngle     = 0.0f;
+    orbit.color            = ocfg.color;
+    registry.emplace<OrbitWeapon>(e, orbit);
+
     return e;
 }
 
@@ -62,6 +74,7 @@ inline void configureEnemy(entt::registry& r, entt::entity e,
     r.replace<Health>       (e, cfg.hp, cfg.hp);
     r.replace<ContactDamage>(e, cfg.contactDamage);
     r.replace<XPValue>      (e, cfg.xpValue);
+    r.replace<OrbitHitCooldown>(e, 0.0f);
 }
 
 inline void configureProjectile(entt::registry& r, entt::entity e,

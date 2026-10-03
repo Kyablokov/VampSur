@@ -1,0 +1,109 @@
+{
+  "upgrades": [
+    {
+      "id": "damage",
+      "name": "+25% Damage",
+      "description": "Projectiles deal 25% more damage.",
+      "weight": 1.0,
+      "effect": { "type": "weapon_damage_mul", "value": 1.25 }
+    },
+    {
+      "id": "fire_rate",
+      "name": "+20% Fire Rate",
+      "description": "Weapon cooldown reduced by 20%.",
+      "weight": 1.0,
+      "effect": { "type": "weapon_cooldown_mul", "value": 0.8 }
+    },
+    {
+      "id": "proj_speed",
+      "name": "+20% Projectile Speed",
+      "description": "Projectiles travel faster.",
+      "weight": 1.0,
+      "effect": { "type": "weapon_projectile_speed_mul", "value": 1.2 }
+    },
+    {
+      "id": "proj_lifetime",
+      "name": "+20% Projectile Range",
+      "description": "Projectiles live 20% longer.",
+      "weight": 1.0,
+      "effect": { "type": "weapon_projectile_lifetime_mul", "value": 1.2 }
+    },
+    {
+      "id": "multishot",
+      "name": "+1 Projectile",
+      "description": "Fire an additional projectile per shot.",
+      "weight": 0.6,
+      "effect": { "type": "weapon_projectile_count_add", "value": 1 }
+    },
+    {
+      "id": "move_speed",
+      "name": "+15% Move Speed",
+      "description": "You run 15% faster.",
+      "weight": 1.0,
+      "effect": { "type": "player_speed_mul", "value": 1.15 }
+    },
+    {
+      "id": "max_hp",
+      "name": "+20 Max HP & Full Heal",
+      "description": "Increases maximum health and fully restores it.",
+      "weight": 1.0,
+      "effect": { "type": "player_max_hp_add", "value": 20.0 }
+    },
+    {
+      "id": "pickup_radius",
+      "name": "+50% Pickup Radius",
+      "description": "Experience orbs fly to you from farther away.",
+      "weight": 0.8,
+      "effect": { "type": "player_pickup_radius_mul", "value": 1.5 }
+    },
+    {
+      "id": "aura_radius",
+      "name": "+25% Aura Radius",
+      "description": "The damage aura reaches farther.",
+      "weight": 1.0,
+      "effect": { "type": "aura_radius_mul", "value": 1.25 }
+    },
+    {
+      "id": "aura_damage",
+      "name": "+30% Aura Damage",
+      "description": "The damage aura hits harder.",
+      "weight": 1.0,
+      "effect": { "type": "aura_damage_mul", "value": 1.3 }
+    },
+    {
+      "id": "aura_tick",
+      "name": "+20% Aura Speed",
+      "description": "The damage aura ticks 20% more often.",
+      "weight": 1.0,
+      "effect": { "type": "aura_tick_mul", "value": 0.8 }
+    },
+    {
+      "id": "orbit_count",
+      "name": "+1 Orbital",
+      "description": "One more projectile orbits you.",
+      "weight": 0.5,
+      "effect": { "type": "orbit_count_add", "value": 1 }
+    },
+    {
+      "id": "orbit_radius",
+      "name": "+20% Orbit Radius",
+      "description": "Orbital projectiles circle farther out.",
+      "weight": 1.0,
+      "effect": { "type": "orbit_radius_mul", "value": 1.2 }
+    },
+    {
+      "id": "orbit_damage",
+      "name": "+25% Orbit Damage",
+      "description": "Orbital projectiles hit harder.",
+      "weight": 1.0,
+      "effect": { "type": "orbit_damage_mul", "value": 1.25 }
+    },
+    {
+      "id": "orbit_speed",
+      "name": "+30% Orbit Speed",
+      "description": "Orbital projectiles spin faster.",
+      "weight": 1.0,
+      "effect": { "type": "orbit_speed_mul", "value": 1.3 }
+    }
+  ]
+}

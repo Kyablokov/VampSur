@@ -1,5 +1,7 @@
 #include "systems/systems.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -8,6 +10,10 @@
 #include "core/upgrades.hpp"
 
 namespace vk {
+
+namespace {
+constexpr float kTwoPi = 6.2831853f;
+}
 
 // ---------------------------------------------------------------- input
 
@@ -74,7 +80,7 @@ void spawnEnemies(World& w, float dt) {
     const auto e = w.enemies.acquire();
     if (e == entt::null) return;
 
-    const float angle = randRange(w.state.rngState, 0.0f, 6.2831853f);
+    const float angle = randRange(w.state.rngState, 0.0f, kTwoPi);
     const float dist  = w.config.spawner.distance;
     const float x     = ppos.x + std::cos(angle) * dist;
     const float y     = ppos.y + std::sin(angle) * dist;
@@ -299,6 +305,87 @@ void updateAura(World& w, float dt) {
     }
 }
 
+// ---------------------------------------------------------------- orbit
+
+namespace {
+
+inline void computeOrbitPositions(const OrbitWeapon& orbit, const Position& ppos,
+                                  std::array<Vector2, 32>& out) {
+    const int n = std::min(orbit.count, 32);
+    if (n <= 0) return;
+    const float step = kTwoPi / static_cast<float>(n);
+    for (int i = 0; i < n; ++i) {
+        const float a = orbit.currentAngle + step * static_cast<float>(i);
+        out[i] = {
+            ppos.x + std::cos(a) * orbit.radius,
+            ppos.y + std::sin(a) * orbit.radius
+        };
+    }
+}
+
+} // namespace
+
+void updateOrbit(World& w, float dt) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<OrbitWeapon>(pe)) return;
+
+    auto& orbit = w.registry.get<OrbitWeapon>(pe);
+    orbit.currentAngle += orbit.angularSpeed * dt;
+    if (orbit.currentAngle >= kTwoPi) orbit.currentAngle -= kTwoPi;
+    if (orbit.currentAngle < 0.0f)    orbit.currentAngle += kTwoPi;
+}
+
+void resolveOrbitHits(World& w, float dt) {
+    w.registry.view<OrbitHitCooldown>().each(
+        [&](auto, OrbitHitCooldown& c) {
+            if (c.remaining > 0.0f) c.remaining -= dt;
+        });
+
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<OrbitWeapon, Position>(pe)) return;
+
+    const auto& orbit = w.registry.get<OrbitWeapon>(pe);
+    const auto& ppos  = w.registry.get<Position>(pe);
+
+    if (orbit.count <= 0) return;
+
+    std::array<Vector2, 32> positions{};
+    computeOrbitPositions(orbit, ppos, positions);
+    const int n = std::min(orbit.count, 32);
+
+    std::vector<entt::entity> killed;
+
+    w.registry.view<EnemyTag, Position, RenderCircle, Health, OrbitHitCooldown>(
+        entt::exclude<Inactive>).each(
+        [&](auto e, const Position& ep, const RenderCircle& erc,
+            Health& hp, OrbitHitCooldown& cd) {
+            if (cd.remaining > 0.0f) return;
+
+            for (int i = 0; i < n; ++i) {
+                const float dx = ep.x - positions[i].x;
+                const float dy = ep.y - positions[i].y;
+                const float r  = orbit.projectileRadius + erc.radius;
+                if (dx * dx + dy * dy > r * r) continue;
+
+                hp.current -= orbit.damage;
+                cd.remaining = orbit.hitCooldown;
+                if (hp.current <= 0.0f) killed.push_back(e);
+                return;
+            }
+        });
+
+    for (auto e : killed) {
+        const auto& pos = w.registry.get<Position>(e);
+        const float value = w.registry.get<XPValue>(e).value;
+        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
+            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
+        }
+        w.enemies.release(e);
+    }
+}
+
 // ---------------------------------------------------------------- XP
 
 void updateXPMagnet(World& w, float dt) {
@@ -376,10 +463,29 @@ void renderAura(World& w) {
     const auto& aura = w.registry.get<AuraWeapon>(pe);
     const auto& pos  = w.registry.get<Position>(pe);
 
-    // Заливка (полупрозрачная) + контур
     DrawCircleV({ pos.x, pos.y }, aura.radius, Fade(aura.color, 0.35f));
     DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y),
                     aura.radius, Fade(aura.color, 0.9f));
+}
+
+void renderOrbit(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<OrbitWeapon, Position>(pe)) return;
+
+    const auto& orbit = w.registry.get<OrbitWeapon>(pe);
+    const auto& ppos  = w.registry.get<Position>(pe);
+
+    if (orbit.count <= 0) return;
+
+    std::array<Vector2, 32> positions{};
+    computeOrbitPositions(orbit, ppos, positions);
+    const int n = std::min(orbit.count, 32);
+
+    for (int i = 0; i < n; ++i) {
+        DrawCircleV(positions[i], orbit.projectileRadius * 2.0f, Fade(orbit.color, 0.15f));
+        DrawCircleV(positions[i], orbit.projectileRadius, orbit.color);
+    }
 }
 
 void renderCircles(entt::registry& r) {

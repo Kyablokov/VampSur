@@ -18,6 +18,7 @@ World::World(GameConfig cfg)
                   r.emplace<Health>(e);
                   r.emplace<ContactDamage>(e);
                   r.emplace<XPValue>(e);
+                  r.emplace<OrbitHitCooldown>(e);
               })
     , projectiles(registry,
                   static_cast<std::size_t>(config.weapon.poolCapacity),
@@ -42,7 +43,7 @@ World::World(GameConfig cfg)
 
 void World::spawnPlayer() {
     createPlayer(registry, config.player, config.combat,
-                 config.weapon, config.aura, config.xp);
+                 config.weapon, config.aura, config.orbit, config.xp);
 }
 
 void World::reset() {

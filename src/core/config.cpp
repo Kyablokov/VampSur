@@ -22,21 +22,22 @@ Color parseColor(const json& j, Color fallback) {
 
 json colorToJson(Color c) { return json::array({ c.r, c.g, c.b, c.a }); }
 
-std::string findConfigPath() {
-    const char* candidates[] = {
-        "assets/config/game.json",
-        "../assets/config/game.json",
+std::string findInAssets(const char* filename) {
+    std::string name = filename;
+    const std::string candidates[] = {
+        "assets/config/" + name,
+        "../assets/config/" + name,
     };
-    for (auto* c : candidates) {
+    for (const auto& c : candidates) {
         std::ifstream f(c);
         if (f.is_open()) return c;
     }
 #ifdef ASSETS_DIR
-    std::string p = std::string(ASSETS_DIR) + "/config/game.json";
+    std::string p = std::string(ASSETS_DIR) + "/config/" + name;
     std::ifstream f(p);
     if (f.is_open()) return p;
 #endif
-    return "assets/config/game.json";
+    return "assets/config/" + name;
 }
 
 EnemyTypeConfig parseEnemyType(const json& e) {
@@ -54,11 +55,56 @@ EnemyTypeConfig parseEnemyType(const json& e) {
 
 } // namespace
 
+std::vector<UpgradeConfig> loadUpgradesConfig(const std::string& path) {
+    std::vector<UpgradeConfig> out;
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        TraceLog(LOG_WARNING, "Upgrades config not found at '%s'", path.c_str());
+        return out;
+    }
+
+    json j;
+    try { file >> j; }
+    catch (const std::exception& e) {
+        TraceLog(LOG_ERROR, "Failed to parse upgrades '%s': %s", path.c_str(), e.what());
+        return out;
+    }
+
+    if (!j.contains("upgrades") || !j["upgrades"].is_array()) {
+        TraceLog(LOG_WARNING, "Upgrades config missing 'upgrades' array");
+        return out;
+    }
+
+    for (const auto& u : j["upgrades"]) {
+        UpgradeConfig cfg;
+        cfg.id          = u.value("id",          "");
+        cfg.name        = u.value("name",        "");
+        cfg.description = u.value("description", "");
+        cfg.weight      = u.value("weight",      1.0f);
+
+        if (u.contains("effect") && u["effect"].is_object()) {
+            const auto& eff = u["effect"];
+            cfg.effectType  = eff.value("type",  "");
+            cfg.effectValue = eff.value("value", 0.0f);
+        }
+
+        if (cfg.id.empty() || cfg.effectType.empty()) {
+            TraceLog(LOG_WARNING, "Skipping malformed upgrade entry");
+            continue;
+        }
+        out.push_back(std::move(cfg));
+    }
+
+    TraceLog(LOG_INFO, "Loaded %zu upgrades from '%s'", out.size(), path.c_str());
+    return out;
+}
+
 GameConfig loadGameConfig(const std::string& path) {
     GameConfig config;
-    config.enemyTypes.push_back(EnemyTypeConfig{});  // безопасный дефолт
+    config.enemyTypes.push_back(EnemyTypeConfig{});
 
-    const std::string actualPath = path.empty() ? findConfigPath() : path;
+    const std::string actualPath = path.empty() ? findInAssets("game.json") : path;
     std::ifstream file(actualPath);
     if (!file.is_open()) {
         TraceLog(LOG_WARNING, "Config not found at '%s', using defaults", actualPath.c_str());
@@ -90,9 +136,7 @@ GameConfig loadGameConfig(const std::string& path) {
     }
     if (j.contains("enemy_types") && j["enemy_types"].is_array()) {
         config.enemyTypes.clear();
-        for (const auto& e : j["enemy_types"]) {
-            config.enemyTypes.push_back(parseEnemyType(e));
-        }
+        for (const auto& e : j["enemy_types"]) config.enemyTypes.push_back(parseEnemyType(e));
         if (config.enemyTypes.empty()) config.enemyTypes.push_back(EnemyTypeConfig{});
     }
     if (j.contains("weapon")) {
@@ -114,6 +158,16 @@ GameConfig loadGameConfig(const std::string& path) {
         config.aura.baseDamage   = a.value("base_damage",   config.aura.baseDamage);
         config.aura.tickInterval = a.value("tick_interval", config.aura.tickInterval);
         if (a.contains("color")) config.aura.color = parseColor(a["color"], config.aura.color);
+    }
+    if (j.contains("orbit")) {
+        const auto& o = j["orbit"];
+        config.orbit.baseCount        = o.value("base_count",        config.orbit.baseCount);
+        config.orbit.baseRadius       = o.value("base_radius",       config.orbit.baseRadius);
+        config.orbit.baseDamage       = o.value("base_damage",       config.orbit.baseDamage);
+        config.orbit.angularSpeed     = o.value("angular_speed",     config.orbit.angularSpeed);
+        config.orbit.projectileRadius = o.value("projectile_radius", config.orbit.projectileRadius);
+        config.orbit.hitCooldown      = o.value("hit_cooldown",      config.orbit.hitCooldown);
+        if (o.contains("color")) config.orbit.color = parseColor(o["color"], config.orbit.color);
     }
     if (j.contains("xp")) {
         const auto& x = j["xp"];
@@ -141,6 +195,9 @@ GameConfig loadGameConfig(const std::string& path) {
         if (wd.contains("background_color")) config.world.backgroundColor = parseColor(wd["background_color"], config.world.backgroundColor);
         if (wd.contains("grid_color"))       config.world.gridColor       = parseColor(wd["grid_color"],       config.world.gridColor);
     }
+
+    // Рядом с game.json ищем upgrades.json
+    config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
     return config;
@@ -180,22 +237,23 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "pool_capacity", c.weapon.poolCapacity },
     };
     j["aura"] = {
-        { "base_radius", c.aura.baseRadius },
-        { "base_damage", c.aura.baseDamage },
-        { "tick_interval", c.aura.tickInterval },
-        { "color", colorToJson(c.aura.color) },
+        { "base_radius", c.aura.baseRadius }, { "base_damage", c.aura.baseDamage },
+        { "tick_interval", c.aura.tickInterval }, { "color", colorToJson(c.aura.color) },
+    };
+    j["orbit"] = {
+        { "base_count", c.orbit.baseCount }, { "base_radius", c.orbit.baseRadius },
+        { "base_damage", c.orbit.baseDamage }, { "angular_speed", c.orbit.angularSpeed },
+        { "projectile_radius", c.orbit.projectileRadius },
+        { "hit_cooldown", c.orbit.hitCooldown },
+        { "color", colorToJson(c.orbit.color) },
     };
     j["xp"] = {
-        { "orb_radius", c.xp.orbRadius },
-        { "orb_color", colorToJson(c.xp.orbColor) },
-        { "magnet_speed", c.xp.magnetSpeed },
-        { "pool_capacity", c.xp.poolCapacity },
-        { "base_requirement", c.xp.baseRequirement },
-        { "requirement_growth", c.xp.requirementGrowth },
+        { "orb_radius", c.xp.orbRadius }, { "orb_color", colorToJson(c.xp.orbColor) },
+        { "magnet_speed", c.xp.magnetSpeed }, { "pool_capacity", c.xp.poolCapacity },
+        { "base_requirement", c.xp.baseRequirement }, { "requirement_growth", c.xp.requirementGrowth },
     };
     j["spawner"] = {
-        { "interval", c.spawner.interval },
-        { "distance", c.spawner.distance },
+        { "interval", c.spawner.interval }, { "distance", c.spawner.distance },
         { "max_enemies", c.spawner.maxEnemies },
     };
     j["combat"] = {

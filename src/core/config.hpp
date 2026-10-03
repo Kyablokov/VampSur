@@ -53,6 +53,16 @@ struct AuraConfig {
     Color color        = {255, 200, 100, 60};
 };
 
+struct OrbitConfig {
+    int   baseCount        = 2;
+    float baseRadius       = 70.0f;
+    float baseDamage       = 8.0f;
+    float angularSpeed     = 3.0f;
+    float projectileRadius = 6.0f;
+    float hitCooldown      = 0.4f;
+    Color color            = {180, 120, 255, 255};
+};
+
 struct XPConfig {
     float orbRadius         = 5.0f;
     Color orbColor          = {100, 220, 255, 255};
@@ -79,20 +89,34 @@ struct WorldConfig {
     Color gridColor       = {55, 55, 75, 255};
 };
 
+struct UpgradeConfig {
+    std::string id;
+    std::string name;
+    std::string description;
+    float       weight      = 1.0f;
+    std::string effectType;
+    float       effectValue = 0.0f;
+};
+
 struct GameConfig {
-    WindowConfig               window;
-    PlayerConfig               player;
+    WindowConfig                 window;
+    PlayerConfig                 player;
     std::vector<EnemyTypeConfig> enemyTypes;
-    WeaponConfig               weapon;
-    AuraConfig                 aura;
-    XPConfig                   xp;
-    SpawnerConfig              spawner;
-    CombatConfig               combat;
-    WorldConfig                world;
+    WeaponConfig                 weapon;
+    AuraConfig                   aura;
+    OrbitConfig                  orbit;
+    XPConfig                     xp;
+    SpawnerConfig                spawner;
+    CombatConfig                 combat;
+    WorldConfig                  world;
+    std::vector<UpgradeConfig>   upgrades;
 };
 
 GameConfig loadGameConfig(const std::string& path = "");
 void       saveGameConfig(const GameConfig& config, const std::string& path);
+
+// Загрузка апгрейдов из отдельного файла (обычно upgrades.json рядом с game.json)
+std::vector<UpgradeConfig> loadUpgradesConfig(const std::string& path);
 
 inline int xpNeededForLevel(const XPConfig& cfg, int level) {
     return cfg.baseRequirement + (level - 1) * cfg.requirementGrowth;

@@ -68,14 +68,12 @@ void drawUpgradeHUD(const World& w) {
     DrawText("Upgrades:", x, y, 18, LIGHTGRAY);
     y += 24;
 
-    const auto& pool = upgradePool();
-    for (const auto& up : pool) {
+    for (const auto& up : w.config.upgrades) {
         auto it = w.state.takenUpgrades.find(up.id);
         if (it == w.state.takenUpgrades.end() || it->second <= 0) continue;
 
-        const Color c = Color{ 200, 210, 230, 255 };
-        DrawText(TextFormat("%s  x%d", up.name.c_str(), it->second),
-                 x, y, 16, c);
+        DrawText(TextFormat("%s  x%d", up.name.c_str(), it->second), x, y, 16,
+                 Color{ 200, 210, 230, 255 });
         y += 20;
     }
 }
@@ -126,7 +124,7 @@ void drawUpgradeScreen(World& w) {
     const char* title = "LEVEL UP!";
     DrawText(title, sw/2 - MeasureText(title, 48)/2, 90, 48, GOLD);
 
-    const auto& pool = upgradePool();
+    const auto& pool = w.config.upgrades;
     const Vector2 mouse = GetMousePosition();
 
     for (int i = 0; i < 3; ++i) {
@@ -197,7 +195,9 @@ int main() {
                 updateWeapons    (world, dt);
                 updateProjectiles(world, dt);
                 updateAura       (world, dt);
+                updateOrbit      (world, dt);
                 resolveProjectileHits(world);
+                resolveOrbitHits     (world, dt);
                 resolveContactDamage (world, dt);
                 resolveXPPickup      (world);
                 checkLevelUp         (world);
@@ -229,6 +229,7 @@ int main() {
             drawGrid(static_cast<float>(config.world.gridSize), 5000.0f, config.world.gridColor);
             drawWorldMarkers(160.0f, 900.0f, { playerX, playerY }, Color{ 90, 90, 110, 255 });
             renderAura(world);
+            renderOrbit(world);
             renderCircles(world.registry);
         EndMode2D();
 

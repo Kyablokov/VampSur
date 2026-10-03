@@ -21,11 +21,15 @@ void resolveContactDamage (World& w, float dt);
 
 void updateAura       (World& w, float dt);
 
+void updateOrbit      (World& w, float dt);
+void resolveOrbitHits (World& w, float dt);
+
 void updateXPMagnet   (World& w, float dt);
 void resolveXPPickup  (World& w);
 void checkLevelUp     (World& w);
 
 void renderAura       (World& w);
+void renderOrbit      (World& w);
 void renderCircles    (entt::registry& r);
 
 }

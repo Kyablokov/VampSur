@@ -1,23 +1,18 @@
 #pragma once
 
-#include <functional>
 #include <string>
-#include <vector>
 
 namespace vk {
 
 struct World;
 
-struct Upgrade {
-    std::string id;
-    std::string name;
-    std::string description;
-    std::function<void(World&)> apply;
-};
-
-const std::vector<Upgrade>& upgradePool();
-
+// Пул всех доступных апгрейдов (из GameConfig::upgrades).
+// Возвращает ссылку на конфиг из World.
+// Вынесено как функция, чтобы HUD и логика имели единый источник.
 void rollUpgrades(World& w);
 void chooseUpgrade(World& w, int slot);
+
+// Применяет эффект по строковому типу (dispatcher).
+void applyUpgradeEffect(World& w, const std::string& type, float value);
 
 }

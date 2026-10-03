@@ -1,6 +1,8 @@
 #include "core/upgrades.hpp"
 
 #include <algorithm>
+#include <string>
+#include <vector>
 
 #include "core/world.hpp"
 
@@ -10,95 +12,132 @@ namespace {
 
 entt::entity player(World& w) { return findPlayer(w.registry); }
 
-void modifyWeapon(World& w, auto&& fn) {
-    if (auto pe = player(w); pe != entt::null && w.registry.all_of<Weapon>(pe)) {
+template <typename Fn>
+void modifyWeapon(World& w, Fn&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<Weapon>(pe))
         fn(w.registry.get<Weapon>(pe));
-    }
 }
 
-void modifyAura(World& w, auto&& fn) {
-    if (auto pe = player(w); pe != entt::null && w.registry.all_of<AuraWeapon>(pe)) {
+template <typename Fn>
+void modifyAura(World& w, Fn&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<AuraWeapon>(pe))
         fn(w.registry.get<AuraWeapon>(pe));
-    }
+}
+
+template <typename Fn>
+void modifyOrbit(World& w, Fn&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<OrbitWeapon>(pe))
+        fn(w.registry.get<OrbitWeapon>(pe));
+}
+
+void modifyHealth(World& w, auto&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<Health>(pe))
+        fn(w.registry.get<Health>(pe));
+}
+
+void modifySpeed(World& w, auto&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<Speed>(pe))
+        fn(w.registry.get<Speed>(pe));
+}
+
+void modifyPickup(World& w, auto&& fn) {
+    if (auto pe = player(w); pe != entt::null && w.registry.all_of<PickupRadius>(pe))
+        fn(w.registry.get<PickupRadius>(pe));
 }
 
 } // namespace
 
-const std::vector<Upgrade>& upgradePool() {
-    static const std::vector<Upgrade> pool = {
-        // --- Projectile weapon ---
-        { "damage", "+25% Damage",
-          "Projectiles deal 25% more damage.",
-          [](World& w) { modifyWeapon(w, [](Weapon& wp) { wp.projectileDamage *= 1.25f; }); } },
-        { "fire_rate", "+20% Fire Rate",
-          "Weapon cooldown reduced by 20%.",
-          [](World& w) { modifyWeapon(w, [](Weapon& wp) { wp.cooldown = std::max(0.05f, wp.cooldown * 0.8f); }); } },
-        { "proj_speed", "+20% Projectile Speed",
-          "Projectiles travel faster.",
-          [](World& w) { modifyWeapon(w, [](Weapon& wp) { wp.projectileSpeed *= 1.2f; }); } },
-        { "proj_lifetime", "+20% Projectile Range",
-          "Projectiles live 20% longer.",
-          [](World& w) { modifyWeapon(w, [](Weapon& wp) { wp.projectileLifetime *= 1.2f; }); } },
-        { "multishot", "+1 Projectile",
-          "Fire an additional projectile per shot.",
-          [](World& w) { modifyWeapon(w, [](Weapon& wp) { wp.projectileCount += 1; }); } },
-
-        // --- Player ---
-        { "move_speed", "+15% Move Speed",
-          "You run 15% faster.",
-          [](World& w) {
-              if (auto pe = player(w); pe != entt::null && w.registry.all_of<Speed>(pe))
-                  w.registry.get<Speed>(pe).value *= 1.15f;
-          } },
-        { "max_hp", "+20 Max HP & Full Heal",
-          "Increases maximum health and fully restores it.",
-          [](World& w) {
-              if (auto pe = player(w); pe != entt::null && w.registry.all_of<Health>(pe)) {
-                  auto& hp = w.registry.get<Health>(pe);
-                  hp.max += 20.0f;
-                  hp.current = hp.max;
-              }
-          } },
-        { "pickup_radius", "+50% Pickup Radius",
-          "Experience orbs fly to you from farther away.",
-          [](World& w) {
-              if (auto pe = player(w); pe != entt::null && w.registry.all_of<PickupRadius>(pe))
-                  w.registry.get<PickupRadius>(pe).value *= 1.5f;
-          } },
-
-        // --- Aura ---
-        { "aura_radius", "+25% Aura Radius",
-          "The damage aura reaches farther.",
-          [](World& w) { modifyAura(w, [](AuraWeapon& a) { a.radius *= 1.25f; }); } },
-        { "aura_damage", "+30% Aura Damage",
-          "The damage aura hits harder.",
-          [](World& w) { modifyAura(w, [](AuraWeapon& a) { a.damage *= 1.3f; }); } },
-        { "aura_tick", "+20% Aura Speed",
-          "The damage aura ticks 20% more often.",
-          [](World& w) { modifyAura(w, [](AuraWeapon& a) { a.tickInterval = std::max(0.1f, a.tickInterval * 0.8f); }); } },
-    };
-    return pool;
+void applyUpgradeEffect(World& w, const std::string& type, float value) {
+    // ---- weapon ----
+    if (type == "weapon_damage_mul") {
+        modifyWeapon(w, [v = value](Weapon& wp) { wp.projectileDamage *= v; });
+    } else if (type == "weapon_cooldown_mul") {
+        modifyWeapon(w, [v = value](Weapon& wp) { wp.cooldown = std::max(0.05f, wp.cooldown * v); });
+    } else if (type == "weapon_projectile_speed_mul") {
+        modifyWeapon(w, [v = value](Weapon& wp) { wp.projectileSpeed *= v; });
+    } else if (type == "weapon_projectile_lifetime_mul") {
+        modifyWeapon(w, [v = value](Weapon& wp) { wp.projectileLifetime *= v; });
+    } else if (type == "weapon_projectile_count_add") {
+        modifyWeapon(w, [v = value](Weapon& wp) {
+            wp.projectileCount = std::max(1, wp.projectileCount + static_cast<int>(v));
+        });
+    }
+    // ---- player ----
+    else if (type == "player_speed_mul") {
+        modifySpeed(w, [v = value](Speed& s) { s.value *= v; });
+    } else if (type == "player_max_hp_add") {
+        modifyHealth(w, [v = value](Health& h) { h.max += v; h.current = h.max; });
+    } else if (type == "player_pickup_radius_mul") {
+        modifyPickup(w, [v = value](PickupRadius& p) { p.value *= v; });
+    }
+    // ---- aura ----
+    else if (type == "aura_radius_mul") {
+        modifyAura(w, [v = value](AuraWeapon& a) { a.radius *= v; });
+    } else if (type == "aura_damage_mul") {
+        modifyAura(w, [v = value](AuraWeapon& a) { a.damage *= v; });
+    } else if (type == "aura_tick_mul") {
+        modifyAura(w, [v = value](AuraWeapon& a) { a.tickInterval = std::max(0.1f, a.tickInterval * v); });
+    }
+    // ---- orbit ----
+    else if (type == "orbit_count_add") {
+        modifyOrbit(w, [v = value](OrbitWeapon& o) {
+            o.count = std::min(32, o.count + static_cast<int>(v));
+        });
+    } else if (type == "orbit_radius_mul") {
+        modifyOrbit(w, [v = value](OrbitWeapon& o) { o.radius *= v; });
+    } else if (type == "orbit_damage_mul") {
+        modifyOrbit(w, [v = value](OrbitWeapon& o) { o.damage *= v; });
+    } else if (type == "orbit_speed_mul") {
+        modifyOrbit(w, [v = value](OrbitWeapon& o) { o.angularSpeed *= v; });
+    }
+    // ---- fallback ----
+    else {
+        TraceLog(LOG_WARNING, "Unknown upgrade effect: %s", type.c_str());
+    }
 }
 
 void rollUpgrades(World& w) {
-    const auto& pool = upgradePool();
+    const auto& pool = w.config.upgrades;
     const int n = static_cast<int>(pool.size());
 
     w.state.upgradeOffer = { -1, -1, -1 };
     if (n == 0) return;
 
     const int count = std::min(3, n);
+
+    auto alreadyPicked = [&](int slot, int candidate) {
+        for (int j = 0; j < slot; ++j) if (w.state.upgradeOffer[j] == candidate) return true;
+        return false;
+    };
+
     for (int i = 0; i < count; ++i) {
-        int idx = -1;
-        bool dup = false;
-        do {
-            idx = randInt(w.state.rngState, 0, n);
-            dup = false;
-            for (int j = 0; j < i; ++j) {
-                if (w.state.upgradeOffer[j] == idx) { dup = true; break; }
+        // Считаем суммарный вес среди ещё не выбранных слотов
+        float total = 0.0f;
+        for (int j = 0; j < n; ++j) {
+            if (alreadyPicked(i, j)) continue;
+            total += std::max(0.0f, pool[j].weight);
+        }
+        if (total <= 0.0f) {
+            // Все веса нули — берём первый невыбранный
+            for (int j = 0; j < n; ++j) {
+                if (!alreadyPicked(i, j)) { w.state.upgradeOffer[i] = j; break; }
             }
-        } while (dup);
-        w.state.upgradeOffer[i] = idx;
+            continue;
+        }
+
+        float r = randRange(w.state.rngState, 0.0f, total);
+        int chosen = -1;
+        for (int j = 0; j < n; ++j) {
+            if (alreadyPicked(i, j)) continue;
+            r -= std::max(0.0f, pool[j].weight);
+            if (r <= 0.0f) { chosen = j; break; }
+        }
+        if (chosen < 0) {
+            for (int j = n - 1; j >= 0; --j) {
+                if (!alreadyPicked(i, j)) { chosen = j; break; }
+            }
+        }
+        w.state.upgradeOffer[i] = chosen;
     }
 }
 
@@ -107,11 +146,11 @@ void chooseUpgrade(World& w, int slot) {
     const int idx = w.state.upgradeOffer[slot];
     if (idx < 0) return;
 
-    const auto& pool = upgradePool();
+    const auto& pool = w.config.upgrades;
     if (idx >= static_cast<int>(pool.size())) return;
 
     const auto& up = pool[idx];
-    up.apply(w);
+    applyUpgradeEffect(w, up.effectType, up.effectValue);
     w.state.takenUpgrades[up.id] += 1;
 
     w.state.upgradeOffer = { -1, -1, -1 };
