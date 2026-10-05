@@ -28,6 +28,7 @@ inline int randInt(uint64_t& s, int lo, int hi) {
 }
 
 enum class GameMode {
+    MainMenu,
     Playing,
     Upgrading,
     Paused,

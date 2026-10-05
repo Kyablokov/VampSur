@@ -94,4 +94,11 @@ void writeSaveFile(const SaveData& data) {
     TraceLog(LOG_INFO, "Save written to '%s'", path.c_str());
 }
 
+
+void clearSaveFile() {
+    SaveData empty;
+    writeSaveFile(empty);
+}
+
+
 } // namespace vk

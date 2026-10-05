@@ -39,4 +39,8 @@ void renderBossHP   (World& w);
 void updateMagnets   (World& w, float dt);
 void resolveMagnetPickup(World& w);
 void renderMagnets   (World& w);
+
+// Единая точка обработки смерти врага: дроп XP, магнита, возврат в пул.
+// Все системы, которые наносят урон, должны вызывать это.
+void killEnemy(World& w, entt::entity e);
 }

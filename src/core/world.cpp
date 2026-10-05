@@ -117,4 +117,9 @@ void World::finalizeRun() {
     state.runSaved = true;
 }
 
+void World::resetSaveFile() {
+    saveData = SaveData{};
+    writeSaveFile(saveData);
+}
+
 } // namespace vk

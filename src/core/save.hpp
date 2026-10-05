@@ -33,4 +33,7 @@ SaveData loadSaveFile();
 // Записывает сохранение. Молча логирует ошибку, если не удалось.
 void writeSaveFile(const SaveData& data);
 
+// Обнуляет переданную структуру и пишет её в файл.
+void clearSaveFile();
+
 }

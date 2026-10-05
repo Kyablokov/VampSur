@@ -236,6 +236,30 @@ void updateProjectiles(World& w, float dt) {
     for (auto e : expired) w.projectiles.release(e);
 }
 
+// ---------------------------------------------------------------- kill
+
+void killEnemy(World& w, entt::entity e) {
+    if (!w.registry.valid(e)) return;
+    if (w.registry.all_of<Inactive>(e)) return;
+
+    w.state.stats.kills += 1;
+
+    const auto& pos   = w.registry.get<Position>(e);
+    const float value = w.registry.get<XPValue>(e).value;
+
+    if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
+        configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
+    }
+
+    if (w.registry.all_of<BossTag>(e)) {
+        if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
+            configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
+        }
+    }
+
+    w.enemies.release(e);
+}
+
 void resolveProjectileHits(World& w) {
     std::vector<entt::entity> candidates;
     std::vector<entt::entity> hitProjectiles;
@@ -265,23 +289,8 @@ void resolveProjectileHits(World& w) {
             }
         });
 
-    for (auto e : killedEnemies) {
-        w.state.stats.kills += 1;
-        const auto& pos = w.registry.get<Position>(e);
-        const float value = w.registry.get<XPValue>(e).value;
-        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
-            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
-        }
-
-        // Боссы дропают магнит
-        if (w.registry.all_of<BossTag>(e)) {
-            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
-                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
-            }
-        }
-
-        w.enemies.release(e);
-    }
+    for (auto e : killedEnemies) killEnemy(w, e);
+    
     for (auto p : hitProjectiles) w.projectiles.release(p);
 }
 
@@ -359,23 +368,7 @@ void updateAura(World& w, float dt) {
             if (hp.current <= 0.0f) killed.push_back(e);
         });
 
-    for (auto e : killed) {
-        w.state.stats.kills += 1;
-        const auto& pos = w.registry.get<Position>(e);
-        const float value = w.registry.get<XPValue>(e).value;
-        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
-            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
-        }
-
-        // Боссы дропают магнит
-        if (w.registry.all_of<BossTag>(e)) {
-            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
-                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
-            }
-        }
-
-        w.enemies.release(e);
-    }
+    for (auto e : killed) killEnemy(w, e);
 }
 
 // ---------------------------------------------------------------- orbit
@@ -449,23 +442,7 @@ void resolveOrbitHits(World& w, float dt) {
             }
         });
 
-    for (auto e : killed) {
-        w.state.stats.kills += 1;
-        const auto& pos = w.registry.get<Position>(e);
-        const float value = w.registry.get<XPValue>(e).value;
-        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
-            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
-        }
-
-        // Боссы дропают магнит
-        if (w.registry.all_of<BossTag>(e)) {
-            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
-                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
-            }
-        }
-
-        w.enemies.release(e);
-    }
+    for (auto e : killed) killEnemy(w, e);
     
 }
 
@@ -541,23 +518,7 @@ void updateLightning(World& w, float dt) {
     }
 
     // Дроп XP и освобождение
-    for (auto e : killed) {
-        w.state.stats.kills += 1;
-        const auto& pos = w.registry.get<Position>(e);
-        const float value = w.registry.get<XPValue>(e).value;
-        if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
-            configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
-        }
-
-        // Боссы дропают магнит
-        if (w.registry.all_of<BossTag>(e)) {
-            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
-                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
-            }
-        }
-
-        w.enemies.release(e);
-    }
+    for (auto e : killed) killEnemy(w, e);
 }
 
 // ---------------------------------------------------------------- XP

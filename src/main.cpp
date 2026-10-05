@@ -2,6 +2,7 @@
 #include <entt/entt.hpp>
 
 #include <cmath>
+#include <string>
 
 #include "components/components.hpp"
 #include "core/config.hpp"
@@ -13,6 +14,8 @@
 using namespace vk;
 
 namespace {
+
+// ---------------------------------------------------------------- world render
 
 void drawGrid(float gridSize, float halfRange, Color color) {
     for (float x = -halfRange; x <= halfRange; x += gridSize)
@@ -39,12 +42,22 @@ void drawWorldMarkers(float spacing, float range, Vector2 center, Color color) {
     }
 }
 
+// ---------------------------------------------------------------- helpers
+
 std::string formatTime(float seconds) {
     const int total = static_cast<int>(seconds);
     const int m = total / 60;
     const int s = total % 60;
     return TextFormat("%02d:%02d", m, s);
 }
+
+int playerLevel(const World& w) {
+    auto pv = w.registry.view<PlayerTag, XP>();
+    if (pv.begin() == pv.end()) return 1;
+    return pv.get<XP>(*pv.begin()).level;
+}
+
+// ---------------------------------------------------------------- HUD
 
 void drawXPBar(const World& w) {
     auto pv = w.registry.view<PlayerTag, XP>();
@@ -86,7 +99,7 @@ void drawUpgradeHUD(const World& w) {
 }
 
 void drawBuildPanel(const World& w) {
-    auto pv = w.registry.view<PlayerTag, Weapon, AuraWeapon, OrbitWeapon, LightningWeapon>();
+    auto pv = w.registry.view<PlayerTag, Weapon, AuraWeapon, OrbitWeapon, LightningWeapon, Speed>();
     if (pv.begin() == pv.end()) return;
 
     const auto e = *pv.begin();
@@ -94,16 +107,21 @@ void drawBuildPanel(const World& w) {
     const auto& ac = w.registry.get<AuraWeapon>(e);
     const auto& oc = w.registry.get<OrbitWeapon>(e);
     const auto& lc = w.registry.get<LightningWeapon>(e);
+    const auto& sp = w.registry.get<Speed>(e);
 
     const int sw = w.config.window.width;
     const int sh = w.config.window.height;
     const int x = 10;
-    int y = sh - 130;
+    int y = sh - 150;
 
-    DrawRectangle(x - 4, y - 4, 260, 124, Fade(BLACK, 0.55f));
+    DrawRectangle(x - 4, y - 4, 280, 144, Fade(BLACK, 0.55f));
 
     DrawText("BUILD", x, y, 16, LIGHTGRAY);
     y += 20;
+
+    DrawText(TextFormat("Player:    SPD %5.1f", sp.value),
+             x, y, 14, Color{ 120, 240, 160, 255 });
+    y += 18;
 
     DrawText(TextFormat("Cannon:    DMG %5.1f  CD %.2f  N %d",
                         wc.projectileDamage, wc.cooldown, wc.projectileCount),
@@ -148,15 +166,16 @@ void drawHUD(const World& w) {
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
                  16, 170, 16, RAYWHITE);
     }
+
     if (w.state.magnetTimer > 0.0f) {
         DrawText(TextFormat("MAGNET: %.1fs", w.state.magnetTimer),
-                10, 220, 18, Color{ 255, 100, 200, 255 });
+                 10, 200, 18, Color{ 255, 100, 200, 255 });
     }
 
-    // Подсказка
-    DrawText("[ESC] pause", 10, 244, 16, Color{ 140, 150, 170, 255 });
+    DrawText("[ESC] pause", 10, 224, 16, Color{ 140, 150, 170, 255 });
 }
 
+// ---------------------------------------------------------------- upgrade cards
 
 Rectangle cardRect(int slot, int screenW, int screenH) {
     constexpr float cardW = 340.0f;
@@ -236,6 +255,8 @@ void drawUpgradeScreen(World& w) {
     }
 }
 
+// ---------------------------------------------------------------- overlays
+
 void drawPausedOverlay(const World& w) {
     const int sw = w.config.window.width;
     const int sh = w.config.window.height;
@@ -248,15 +269,11 @@ void drawPausedOverlay(const World& w) {
     const char* hint = "Press ESC or P to resume";
     DrawText(hint, sw/2 - MeasureText(hint, 22)/2, sh/2 + 10, 22, Color{ 200, 210, 230, 255 });
 
-    // Мини-статы
-    const char* stats = TextFormat("Time %s   Level %d   Kills %d",
-                                   formatTime(w.state.timeSeconds).c_str(),
-                                   [&]() {
-                                       auto pv = w.registry.view<PlayerTag, XP>();
-                                       return pv.begin() == pv.end() ? 1 : pv.get<XP>(*pv.begin()).level;
-                                   }(),
-                                   w.state.stats.kills);
-    DrawText(stats, sw/2 - MeasureText(stats, 18)/2, sh/2 + 60, 18, GOLD);
+    const std::string stats = TextFormat("Time %s   Level %d   Kills %d",
+                                         formatTime(w.state.timeSeconds).c_str(),
+                                         playerLevel(w),
+                                         w.state.stats.kills);
+    DrawText(stats.c_str(), sw/2 - MeasureText(stats.c_str(), 18)/2, sh/2 + 60, 18, GOLD);
 }
 
 void drawDeathScreen(const World& w) {
@@ -268,12 +285,10 @@ void drawDeathScreen(const World& w) {
     const char* title = "GAME OVER";
     DrawText(title, sw/2 - MeasureText(title, 52)/2, 100, 52, RED);
 
-    const int colLabelX  = sw/2 - 240;
-    const int colValueX  = sw/2 + 20;
+    const int colLabelX = sw/2 - 240;
+    const int colValueX = sw/2 + 20;
     int y = 210;
 
-    // Заголовки таблицы
-    DrawText("", colLabelX, y, 20, LIGHTGRAY);
     DrawText("THIS RUN", colValueX + 100, y, 20, Color{ 200, 210, 230, 255 });
     DrawText("BEST",     colValueX + 260, y, 20, GOLD);
     y += 32;
@@ -282,16 +297,24 @@ void drawDeathScreen(const World& w) {
         DrawText(label, colLabelX, y, 22, LIGHTGRAY);
         DrawText(run,   colValueX + 100, y, 22, RAYWHITE);
         DrawText(best,  colValueX + 260, y, 22, newBest ? GOLD : Color{ 200, 210, 230, 255 });
-        if (newBest) {
-            DrawText("NEW!", colValueX + 360, y, 22, GOLD);
-        }
+        if (newBest) DrawText("NEW!", colValueX + 360, y, 22, GOLD);
         y += 34;
     };
 
     const auto& sd = w.saveData;
-    row("Time",  formatTime(sd.lastTime).c_str(),  formatTime(sd.bestTime).c_str(),  sd.newBestTime);
-    row("Level", TextFormat("%d", sd.lastLevel), TextFormat("%d", sd.bestLevel), sd.newBestLevel);
-    row("Kills", TextFormat("%d", sd.lastKills), TextFormat("%d", sd.bestKills), sd.newBestKills);
+
+    // formatTime и TextFormat используют ring-буфер raylib — не более 4 вызовов подряд
+    const std::string timeRun  = formatTime(sd.lastTime);
+    const std::string timeBest = formatTime(sd.bestTime);
+    row("Time",  timeRun.c_str(), timeBest.c_str(), sd.newBestTime);
+
+    const std::string lvlRun  = TextFormat("%d", sd.lastLevel);
+    const std::string lvlBest = TextFormat("%d", sd.bestLevel);
+    row("Level", lvlRun.c_str(), lvlBest.c_str(), sd.newBestLevel);
+
+    const std::string killRun  = TextFormat("%d", sd.lastKills);
+    const std::string killBest = TextFormat("%d", sd.bestKills);
+    row("Kills", killRun.c_str(), killBest.c_str(), sd.newBestKills);
 
     y += 20;
     DrawText(TextFormat("Damage taken this run: %.0f", w.state.stats.damageTaken),
@@ -300,8 +323,97 @@ void drawDeathScreen(const World& w) {
     DrawText(TextFormat("Total runs: %d", sd.totalRuns),
              colLabelX, y, 18, Color{ 160, 170, 190, 255 });
 
-    const char* hint = "Press SPACE to restart";
-    DrawText(hint, sw/2 - MeasureText(hint, 24)/2, sh - 110, 24, RAYWHITE);
+    const char* hint = "Press SPACE / ENTER or click to return to menu";
+    DrawText(hint, sw/2 - MeasureText(hint, 22)/2, sh - 80, 22, RAYWHITE);
+}
+
+// ---------------------------------------------------------------- main menu
+
+Rectangle playButtonRect(int sw, int sh) {
+    return { sw/2.0f - 200.0f, sh/2.0f - 20.0f, 400.0f, 60.0f };
+}
+
+Rectangle resetButtonRect(int sw, int sh) {
+    return { sw/2.0f - 200.0f, sh/2.0f + 60.0f, 400.0f, 42.0f };
+}
+
+void drawMainMenu(const World& w) {
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+
+    ClearBackground(Color{ 12, 12, 20, 255 });
+
+    const char* title = "VAMPIRE LIKE";
+    DrawText(title, sw/2 - MeasureText(title, 64)/2, 70, 64, Color{ 220, 80, 80, 255 });
+
+    const char* sub = "survive as long as you can";
+    DrawText(sub, sw/2 - MeasureText(sub, 22)/2, 150, 22, Color{ 140, 150, 170, 255 });
+
+    // Рекорды
+    int y = 220;
+    DrawText("BEST RUNS", sw/2 - 100, y, 22, GOLD);
+    y += 40;
+
+    const std::string t = formatTime(w.saveData.bestTime);
+    DrawText(TextFormat("Time:       %s", t.c_str()), sw/2 - 100, y, 20, RAYWHITE); y += 28;
+    DrawText(TextFormat("Level:      %d", w.saveData.bestLevel), sw/2 - 100, y, 20, RAYWHITE); y += 28;
+    DrawText(TextFormat("Kills:      %d", w.saveData.bestKills), sw/2 - 100, y, 20, RAYWHITE); y += 28;
+    DrawText(TextFormat("Total runs: %d", w.saveData.totalRuns), sw/2 - 100, y, 18,
+             Color{ 160, 170, 190, 255 });
+
+    // Кнопки
+    const Rectangle playBtn  = playButtonRect(sw, sh);
+    const Rectangle resetBtn = resetButtonRect(sw, sh);
+    const Vector2 mouse = GetMousePosition();
+
+    {
+        const bool hov = CheckCollisionPointRec(mouse, playBtn);
+        DrawRectangleRec(playBtn, hov ? Color{ 60, 160, 80, 255 } : Color{ 40, 100, 55, 255 });
+        DrawRectangleLinesEx(playBtn, 2.0f, hov ? LIME : Color{ 80, 180, 100, 255 });
+        const char* txt = "PLAY";
+        DrawText(txt,
+                 static_cast<int>(playBtn.x + playBtn.width/2 - MeasureText(txt, 28)/2),
+                 static_cast<int>(playBtn.y + 14), 28, RAYWHITE);
+    }
+
+    {
+        const bool hov = CheckCollisionPointRec(mouse, resetBtn);
+        DrawRectangleRec(resetBtn, hov ? Color{ 100, 40, 40, 255 } : Color{ 55, 25, 25, 255 });
+        DrawRectangleLinesEx(resetBtn, 1.5f,
+                             hov ? Color{ 240, 100, 100, 255 } : Color{ 140, 60, 60, 255 });
+        const char* txt = "Reset Save (R)";
+        DrawText(txt,
+                 static_cast<int>(resetBtn.x + resetBtn.width/2 - MeasureText(txt, 18)/2),
+                 static_cast<int>(resetBtn.y + 12), 18, Color{ 220, 180, 180, 255 });
+    }
+
+    DrawText("Press ENTER to play",
+             sw/2 - MeasureText("Press ENTER to play", 18)/2,
+             sh - 60, 18, Color{ 140, 150, 170, 255 });
+}
+
+// Обработка ввода в главном меню. Возвращает true, если нужно стартовать игру.
+bool handleMainMenuInput(World& w) {
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
+        return true;
+    }
+    if (IsKeyPressed(KEY_R)) {
+        w.resetSaveFile();
+    }
+
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+    const Vector2 mouse = GetMousePosition();
+
+    if (CheckCollisionPointRec(mouse, playButtonRect(sw, sh)) &&
+        IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        return true;
+    }
+    if (CheckCollisionPointRec(mouse, resetButtonRect(sw, sh)) &&
+        IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        w.resetSaveFile();
+    }
+    return false;
 }
 
 } // namespace
@@ -310,13 +422,12 @@ int main() {
     GameConfig config = loadGameConfig();
 
     InitWindow(config.window.width, config.window.height, config.window.title.c_str());
-    SetWindowState(FLAG_WINDOW_TOPMOST);
-    ClearWindowState(FLAG_WINDOW_TOPMOST);
     SetTargetFPS(config.window.targetFps);
-    SetExitKey(KEY_NULL);  // ESC больше не закрывает окно — используем как паузу
+    SetExitKey(KEY_NULL);
 
     World world(config);
     world.spawnPlayer();
+    world.state.mode = GameMode::MainMenu;
 
     Camera2D camera{};
     camera.zoom   = 1.0f;
@@ -329,19 +440,26 @@ int main() {
     while (!WindowShouldClose()) {
         const float dt = GetFrameTime();
 
+        // ----------------------------------------------------------------
+        // Обновление логики
+        // ----------------------------------------------------------------
         switch (world.state.mode) {
+            case GameMode::MainMenu: {
+                if (handleMainMenuInput(world)) {
+                    world.reset();               // обнуляет state, остаётся mode=Playing
+                }
+                break;
+            }
+
             case GameMode::Playing: {
                 world.state.timeSeconds += dt;
 
                 updateInput      (world, dt);
                 spawnEnemies     (world, dt);
-                spawnBosses      (world, dt);   // ← добавить эту функцию
-                updateXPMagnet   (world, dt);
-                updateMovement   (world, dt);   
+                spawnBosses      (world, dt);
                 chasePlayer      (world, dt);
                 updateXPMagnet   (world, dt);
-                updateMagnets     (world, dt);
-                resolveMagnetPickup(world);
+                updateMagnets    (world, dt);
                 updateMovement   (world, dt);
 
                 rebuildSpatial   (world);
@@ -354,6 +472,7 @@ int main() {
                 resolveOrbitHits     (world, dt);
                 resolveContactDamage (world, dt);
                 resolveXPPickup      (world);
+                resolveMagnetPickup  (world);
                 checkLevelUp         (world);
 
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
@@ -361,63 +480,81 @@ int main() {
                 }
                 break;
             }
+
             case GameMode::Upgrading: {
                 if (IsKeyPressed(KEY_ONE))   chooseUpgrade(world, 0);
                 if (IsKeyPressed(KEY_TWO))   chooseUpgrade(world, 1);
                 if (IsKeyPressed(KEY_THREE)) chooseUpgrade(world, 2);
                 break;
             }
+
             case GameMode::Paused: {
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
                     world.state.mode = GameMode::Playing;
                 }
                 break;
             }
+
             case GameMode::GameOver: {
                 world.finalizeRun();
                 const bool restart =
                     IsKeyPressed(KEY_SPACE) ||
                     IsKeyPressed(KEY_ENTER) ||
                     IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
-                if (restart) world.reset();
+                if (restart) {
+                    world.state.mode = GameMode::MainMenu;
+                }
                 break;
             }
         }
 
+        // ----------------------------------------------------------------
+        // Камера (только вне меню)
+        // ----------------------------------------------------------------
         float playerX = 0.0f, playerY = 0.0f;
-        world.registry.view<PlayerTag, Position>().each(
-            [&](auto, const Position& pos) {
-                playerX = pos.x; playerY = pos.y;
-                camera.target = { pos.x, pos.y };
-            });
+        if (world.state.mode != GameMode::MainMenu) {
+            world.registry.view<PlayerTag, Position>().each(
+                [&](auto, const Position& pos) {
+                    playerX = pos.x; playerY = pos.y;
+                    camera.target = { pos.x, pos.y };
+                });
+        }
 
+        // ----------------------------------------------------------------
+        // Рендер
+        // ----------------------------------------------------------------
         BeginDrawing();
-        ClearBackground(config.world.backgroundColor);
 
-        BeginMode2D(camera);
-            drawGrid(static_cast<float>(config.world.gridSize), 5000.0f, config.world.gridColor);
-            drawWorldMarkers(160.0f, 900.0f, { playerX, playerY }, Color{ 90, 90, 110, 255 });
-            renderAura(world);
-            renderOrbit(world);
-            renderCircles(world.registry);
-            renderMagnets(world);
-            renderBossHP(world);   // ← добавить
-            renderLightning(world);
-        EndMode2D();
+        if (world.state.mode == GameMode::MainMenu) {
+            drawMainMenu(world);
+        } else {
+            ClearBackground(config.world.backgroundColor);
 
-        DrawFPS(10, 10);
-        DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 224, 16, LIME);
-        drawXPBar(world);
-        drawHUD(world);
-        drawUpgradeHUD(world);
-        drawBuildPanel(world);
+            BeginMode2D(camera);
+                drawGrid(static_cast<float>(config.world.gridSize), 5000.0f, config.world.gridColor);
+                drawWorldMarkers(160.0f, 900.0f, { playerX, playerY }, Color{ 90, 90, 110, 255 });
+                renderAura(world);
+                renderOrbit(world);
+                renderCircles(world.registry);
+                renderMagnets(world);
+                renderBossHP(world);
+                renderLightning(world);
+            EndMode2D();
 
-        if (world.state.mode == GameMode::Upgrading) {
-            drawUpgradeScreen(world);
-        } else if (world.state.mode == GameMode::Paused) {
-            drawPausedOverlay(world);
-        } else if (world.state.mode == GameMode::GameOver) {
-            drawDeathScreen(world);
+            DrawFPS(10, 10);
+            DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 250, 16, LIME);
+            drawXPBar(world);
+            drawHUD(world);
+            drawUpgradeHUD(world);
+            drawBuildPanel(world);
+
+            if (world.state.mode == GameMode::Upgrading) {
+                drawUpgradeScreen(world);
+            } else if (world.state.mode == GameMode::Paused) {
+                drawPausedOverlay(world);
+            } else if (world.state.mode == GameMode::GameOver) {
+                drawDeathScreen(world);
+            }
         }
 
         EndDrawing();
