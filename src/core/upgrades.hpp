@@ -15,4 +15,7 @@ void chooseUpgrade(World& w, int slot);
 // Применяет эффект по строковому типу (dispatcher).
 void applyUpgradeEffect(World& w, const std::string& type, float value);
 
+// Начинает серию из N апгрейдов (чест или цепочка левелапов).
+void beginUpgradeChain(World& w, int count, bool fromChest);
+
 }

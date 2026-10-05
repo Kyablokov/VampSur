@@ -213,8 +213,16 @@ void drawUpgradeScreen(World& w) {
 
     DrawRectangle(0, 0, sw, sh, Fade(BLACK, 0.78f));
 
-    const char* title = "LEVEL UP!";
-    DrawText(title, sw/2 - MeasureText(title, 48)/2, 80, 48, GOLD);
+    const char* title = w.state.fromChest ? "CHEST!" : "LEVEL UP!";
+    const Color titleColor = w.state.fromChest ? Color{ 255, 200, 80, 255 } : GOLD;
+    DrawText(title, sw/2 - MeasureText(title, 48)/2, 80, 48, titleColor); 
+
+    if (w.state.pendingUpgrades >= 1) {
+        const char* counter = TextFormat("Picks left: %d", w.state.pendingUpgrades);
+        DrawText(counter,
+                sw/2 - MeasureText(counter, 20)/2,
+                140, 20, Color{ 220, 220, 240, 255 });
+    }
 
     const auto& pool = w.config.upgrades;
     const Vector2 mouse = GetMousePosition();
@@ -471,6 +479,7 @@ int main() {
                 updateXPMagnet   (world, dt);
                 updateMagnets    (world, dt);
                 updateHealOrbs(world, dt);
+                updateChests(world, dt);       // после updateHealOrbs
                 updateMovement   (world, dt);
 
                 rebuildSpatial   (world);
@@ -485,6 +494,7 @@ int main() {
                 resolveXPPickup      (world);
                 resolveMagnetPickup  (world);
                 resolveHealPickup(world);
+                resolveChestPickup(world);     // после resolveHealPickup
                 checkLevelUp         (world);
 
                 // Эффекты (шаг 12)
@@ -505,6 +515,11 @@ int main() {
                 if (IsKeyPressed(KEY_ONE))   chooseUpgrade(world, 0);
                 if (IsKeyPressed(KEY_TWO))   chooseUpgrade(world, 1);
                 if (IsKeyPressed(KEY_THREE)) chooseUpgrade(world, 2);
+                if (IsKeyPressed(KEY_ESCAPE)) {
+                    world.state.mode            = GameMode::Playing;
+                    world.state.pendingUpgrades = 0;
+                    world.state.fromChest       = false;
+                }
                 break;
             }
 
@@ -579,6 +594,7 @@ int main() {
                 renderCircles(world.registry);
                 renderMagnets(world);
                 renderHealOrbs(world);
+                renderChests(world);
                 renderBossHP(world);
                 renderLightning(world);
                 world.particles.render();        // ← частицы

@@ -262,6 +262,13 @@ GameConfig loadGameConfig(const std::string& path) {
         config.healOrb.poolCapacity = h.value("pool_capacity", config.healOrb.poolCapacity);
         if (h.contains("color")) config.healOrb.color = parseColor(h["color"], config.healOrb.color);
     }
+    if (j.contains("chest")) {
+        const auto& c = j["chest"];
+        config.chest.upgradesPerChest = c.value("upgrades_per_chest", config.chest.upgradesPerChest);
+        config.chest.radius           = c.value("radius",             config.chest.radius);
+        config.chest.poolCapacity     = c.value("pool_capacity",      config.chest.poolCapacity);
+        if (c.contains("color")) config.chest.color = parseColor(c["color"], config.chest.color);
+    }
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
@@ -380,6 +387,12 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "radius",        c.healOrb.radius },
         { "color",         colorToJson(c.healOrb.color) },
         { "pool_capacity", c.healOrb.poolCapacity },
+    };
+    j["chest"] = {
+        { "upgrades_per_chest", c.chest.upgradesPerChest },
+        { "radius",             c.chest.radius },
+        { "color",              colorToJson(c.chest.color) },
+        { "pool_capacity",      c.chest.poolCapacity },
     };
 
     std::ofstream out(path);

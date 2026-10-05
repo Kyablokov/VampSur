@@ -161,6 +161,13 @@ struct HealOrbConfig {
     int   poolCapacity = 32;
 };
 
+struct ChestConfig {
+    int   upgradesPerChest = 3;
+    float radius           = 14.0f;
+    Color color            = {255, 200, 80, 255};
+    int   poolCapacity     = 4;
+};
+
 struct GameConfig {
     WindowConfig                 window;
     PlayerConfig                 player;
@@ -180,6 +187,8 @@ struct GameConfig {
     EffectsConfig effects;
     AudioConfig audio;
     HealOrbConfig healOrb;
+    ChestConfig chest;
+
 };
 
 

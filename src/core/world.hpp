@@ -30,6 +30,7 @@ struct World {
     EntityPool<XPOrbTag>      xpOrbs;
     EntityPool<MagnetOrbTag> magnetOrbs;
     EntityPool<HealOrbTag> healOrbs;
+    EntityPool<ChestTag> chests;
 
 
     SpatialHash enemySpatial;

@@ -295,6 +295,13 @@ void killEnemy(World& w, entt::entity e) {
         }
     }
 
+    // Чест дропается только с босса
+    if (isBoss) {
+        if (auto ch = w.chests.acquire(); ch != entt::null) {
+            configureChest(w.registry, ch, pos.x, pos.y, w.config.chest);
+        }
+    }
+
     w.enemies.release(e);
 }
 
@@ -662,10 +669,9 @@ void checkLevelUp(World& w) {
     xp.needed  = static_cast<float>(xpNeededForLevel(w.config.xp, xp.level));
 
     
-    rollUpgrades(w);
+    beginUpgradeChain(w, 1, false);
     w.audio.play("levelup");
 
-    w.state.mode = GameMode::Upgrading;
 }
 
 // ---------------------------------------------------------------- render
@@ -872,6 +878,66 @@ void renderHealOrbs(World& w) {
             const float pulse = 1.0f + 0.25f * std::sin(t * 5.0f);
             DrawCircleV({ pos.x, pos.y }, rc.radius * pulse * 1.8f, Fade(rc.color, 0.2f));
             DrawCircleV({ pos.x, pos.y }, rc.radius * pulse, rc.color);
+        });
+}
+
+
+// ---------------------------------------------------------------- chests
+
+void updateChests(World& w, float /*dt*/) {
+    // Сундуки НЕ двигаются и НЕ притягиваются.
+    // Стоят на месте, ждут пока игрок подойдёт вплотную.
+}
+
+void resolveChestPickup(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, RenderCircle>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const auto& prc  = w.registry.get<RenderCircle>(pe);
+
+    std::vector<entt::entity> picked;
+
+    w.registry.view<ChestTag, Position, RenderCircle, Chest>(entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, const Chest& c) {
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r = prc.radius + rc.radius + 2.0f;
+            if (dx * dx + dy * dy > r * r) return;
+
+            // Запускаем серию
+            beginUpgradeChain(w, c.upgradesRemaining, true);
+            w.audio.play("levelup", 1.1f);
+            w.particles.spawnBurst({ pos.x, pos.y }, 40,
+                                   120.0f, 400.0f,
+                                   6.0f, 0.0f,
+                                   GOLD, { 255, 200, 80, 0 },
+                                   0.7f, 3.0f, w.state.rngState);
+            picked.push_back(e);
+        });
+
+    for (auto e : picked) w.chests.release(e);
+}
+
+void renderChests(World& w) {
+    const float t = static_cast<float>(GetTime());
+    w.registry.view<ChestTag, Position, RenderCircle>(entt::exclude<Inactive>).each(
+        [&](auto, const Position& pos, const RenderCircle& rc) {
+            const float pulse = 1.0f + 0.15f * std::sin(t * 4.0f);
+            // Свечение
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse * 2.5f, Fade(rc.color, 0.18f));
+            // Квадрат-сундук
+            const float s = rc.radius * pulse;
+            DrawRectangle(static_cast<int>(pos.x - s), static_cast<int>(pos.y - s),
+                          static_cast<int>(s * 2), static_cast<int>(s * 2),
+                          rc.color);
+            DrawRectangleLines(static_cast<int>(pos.x - s), static_cast<int>(pos.y - s),
+                               static_cast<int>(s * 2), static_cast<int>(s * 2),
+                               GOLD);
+            // Крышка
+            DrawRectangle(static_cast<int>(pos.x - s), static_cast<int>(pos.y - s * 0.2f),
+                          static_cast<int>(s * 2), 3, BLACK);
         });
 }
 

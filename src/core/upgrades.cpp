@@ -158,6 +158,14 @@ void rollUpgrades(World& w) {
     }
 }
 
+void beginUpgradeChain(World& w, int count, bool fromChest) {
+    if (count <= 0) return;
+    w.state.pendingUpgrades = count;
+    w.state.fromChest       = fromChest;
+    rollUpgrades(w);
+    w.state.mode = GameMode::Upgrading;
+}
+
 void chooseUpgrade(World& w, int slot) {
     if (slot < 0 || slot >= 3) return;
     const int idx = w.state.upgradeOffer[slot];
@@ -170,8 +178,17 @@ void chooseUpgrade(World& w, int slot) {
     applyUpgradeEffect(w, up.effectType, up.effectValue);
     w.state.takenUpgrades[up.id] += 1;
 
-    w.state.upgradeOffer = { -1, -1, -1 };
-    w.state.mode = GameMode::Playing;
+    w.state.pendingUpgrades -= 1;
+
+    if (w.state.pendingUpgrades > 0) {
+        // Роллим следующий набор, остаёмся в Upgrading
+        rollUpgrades(w);
+    } else {
+        // Серия закончена
+        w.state.fromChest       = false;
+        w.state.upgradeOffer    = { -1, -1, -1 };
+        w.state.mode            = GameMode::Playing;
+    }
 }
 
 } // namespace vk

@@ -53,4 +53,8 @@ void renderHealOrbs   (World& w);
 // Единая точка обработки смерти врага: дроп XP, магнита, возврат в пул.
 // Все системы, которые наносят урон, должны вызывать это.
 void killEnemy(World& w, entt::entity e);
+
+void updateChests  (World& w, float dt);
+void resolveChestPickup(World& w);
+void renderChests  (World& w);
 }

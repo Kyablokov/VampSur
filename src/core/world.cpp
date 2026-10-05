@@ -55,6 +55,14 @@ World::World(GameConfig cfg)
                r.emplace<RenderCircle>(e);
                r.emplace<HealOrb>(e);
            })
+    , chests(registry,
+         static_cast<std::size_t>(config.chest.poolCapacity),
+         [](entt::registry& r, entt::entity e) {
+             r.emplace<Position>(e);
+             r.emplace<Velocity>(e);
+             r.emplace<RenderCircle>(e);
+             r.emplace<Chest>(e);
+         })
     , enemySpatial(64.0f)
 {
     particles.reserve(static_cast<std::size_t>(config.effects.particlePool));
@@ -96,6 +104,11 @@ void World::reset() {
     registry.view<HealOrbTag>(entt::exclude<Inactive>).each(
         [&](auto e) { toRelease.push_back(e); });
     for (auto e : toRelease) healOrbs.release(e);
+
+    toRelease.clear();
+    registry.view<ChestTag>(entt::exclude<Inactive>).each(
+        [&](auto e) { toRelease.push_back(e); });
+    for (auto e : toRelease) chests.release(e);
 
     if (auto pe = findPlayer(registry); pe != entt::null) {
         registry.destroy(pe);

@@ -98,4 +98,7 @@ struct MagnetOrb    { float pullDuration = 4.0f; };
 
 struct HealOrbTag {};
 struct HealOrb   { float amount = 15.0f; };
+
+struct ChestTag {};
+struct Chest    { int upgradesRemaining = 3; };
 }

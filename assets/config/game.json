@@ -71,6 +71,12 @@
     "color": [100, 255, 120, 255],
     "pool_capacity": 32
   },
+  "chest": {
+    "upgrades_per_chest": 3,
+    "radius": 14.0,
+    "color": [255, 200, 80, 255],
+    "pool_capacity": 4
+  },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
   "combat":  { "player_hp": 70.0, "player_invuln_time": 0.6 },
   "effects": {

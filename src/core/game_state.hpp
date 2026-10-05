@@ -48,6 +48,8 @@ struct GameState {
     float bossTimer = 60.0f;   // обратный отсчёт до следующего босса
     RunStats stats;
     float magnetTimer = 0.0f;   // >0 — все XP-орбы летят к игроку
+    int  pendingUpgrades = 0;   // сколько апгрейдов осталось предложить
+    bool fromChest       = false;   // true, если текущая серия — из сундука
 
     // Флаг: результат текущего прогона уже записан в save.json
     bool runSaved = false;
