@@ -280,9 +280,18 @@ void killEnemy(World& w, entt::entity e) {
         configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
     }
 
-    if (w.registry.all_of<BossTag>(e)) {
+    const bool isBoss = w.registry.all_of<BossTag>(e);
+    if (isBoss) {
         if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
             configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
+        }
+    }
+
+    // Хилка: 100% для босса, 5% для обычного врага
+    const bool healDrop = isBoss || (rand01(w.state.rngState) < w.config.healOrb.dropChance);
+    if (healDrop) {
+        if (auto h = w.healOrbs.acquire(); h != entt::null) {
+            configureHealOrb(w.registry, h, pos.x, pos.y, w.config.healOrb);
         }
     }
 
@@ -787,6 +796,85 @@ void applyHit(World& w, entt::entity enemy) {
     hf.remaining = w.config.effects.hitFlashDuration;
     hf.maxTime   = w.config.effects.hitFlashDuration;
 }
+
+// ---------------------------------------------------------------- heal orbs
+
+void updateHealOrbs(World& w, float dt) {
+    // Хилки НЕ притягиваются магнитом, только обычным PickupRadius.
+    // Логика притяжения — та же, что у XP, но без проверки magnetTimer.
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, PickupRadius>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const float radius = w.registry.get<PickupRadius>(pe).value;
+    const float r2 = radius * radius;
+    const float speed = w.config.xp.magnetSpeed * 0.8f;   // чуть медленнее XP
+
+    w.registry.view<HealOrbTag, Position, Velocity>(entt::exclude<Inactive>).each(
+        [&](auto, Position& pos, Velocity& vel) {
+            const float dx = ppos.x - pos.x;
+            const float dy = ppos.y - pos.y;
+            const float d2 = dx * dx + dy * dy;
+            if (d2 > r2) { vel.x = vel.y = 0.0f; return; }
+            const float len = std::sqrt(d2);
+            if (len < 1e-4f) { vel.x = vel.y = 0.0f; return; }
+            const float t = 1.0f - (len / radius);
+            const float sp = speed * (0.35f + 0.65f * t);
+            vel.x = dx / len * sp;
+            vel.y = dy / len * sp;
+        });
+}
+
+void resolveHealPickup(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, RenderCircle, Health>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const auto& prc  = w.registry.get<RenderCircle>(pe);
+    auto& hp = w.registry.get<Health>(pe);
+
+    std::vector<entt::entity> picked;
+    float totalHeal = 0.0f;
+
+    w.registry.view<HealOrbTag, Position, RenderCircle, HealOrb>(entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, const HealOrb& orb) {
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r = prc.radius + rc.radius + 2.0f;
+            if (dx * dx + dy * dy > r * r) return;
+
+            totalHeal += orb.amount;
+            picked.push_back(e);
+        });
+
+    if (picked.empty()) return;
+
+    hp.current = std::min(hp.max, hp.current + totalHeal);
+
+    // Частицы зелёные
+    w.particles.spawnBurst({ ppos.x, ppos.y }, 14,
+                           80.0f, 220.0f,
+                           4.0f, 0.0f,
+                           Color{ 100, 255, 120, 255 }, { 100, 255, 120, 0 },
+                           0.5f, 5.0f, w.state.rngState);
+
+    w.audio.play("pickup", 0.7f);
+
+    for (auto e : picked) w.healOrbs.release(e);
+}
+
+void renderHealOrbs(World& w) {
+    const float t = static_cast<float>(GetTime());
+    w.registry.view<HealOrbTag, Position, RenderCircle>(entt::exclude<Inactive>).each(
+        [&](auto, const Position& pos, const RenderCircle& rc) {
+            const float pulse = 1.0f + 0.25f * std::sin(t * 5.0f);
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse * 1.8f, Fade(rc.color, 0.2f));
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse, rc.color);
+        });
+}
+
 
 void renderCircles(entt::registry& r) {
     r.view<Position, RenderCircle>(entt::exclude<Inactive>).each(

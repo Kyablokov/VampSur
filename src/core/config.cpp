@@ -254,6 +254,14 @@ GameConfig loadGameConfig(const std::string& path) {
         config.audio.killSfxMinInterval = a.value("kill_sfx_min_interval",  config.audio.killSfxMinInterval);
         config.audio.hitSfxMinInterval  = a.value("hit_sfx_min_interval",   config.audio.hitSfxMinInterval);
     }
+    if (j.contains("heal_orb")) {
+        const auto& h = j["heal_orb"];
+        config.healOrb.healAmount   = h.value("heal_amount",   config.healOrb.healAmount);
+        config.healOrb.dropChance   = h.value("drop_chance",   config.healOrb.dropChance);
+        config.healOrb.radius       = h.value("radius",        config.healOrb.radius);
+        config.healOrb.poolCapacity = h.value("pool_capacity", config.healOrb.poolCapacity);
+        if (h.contains("color")) config.healOrb.color = parseColor(h["color"], config.healOrb.color);
+    }
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
@@ -366,6 +374,14 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "kill_sfx_min_interval",  c.audio.killSfxMinInterval },
         { "hit_sfx_min_interval",   c.audio.hitSfxMinInterval },
     };
+    j["heal_orb"] = {
+        { "heal_amount",   c.healOrb.healAmount },
+        { "drop_chance",   c.healOrb.dropChance },
+        { "radius",        c.healOrb.radius },
+        { "color",         colorToJson(c.healOrb.color) },
+        { "pool_capacity", c.healOrb.poolCapacity },
+    };
+
     std::ofstream out(path);
 
     if (!out.is_open()) { TraceLog(LOG_ERROR, "Cannot write config to '%s'", path.c_str()); return; }

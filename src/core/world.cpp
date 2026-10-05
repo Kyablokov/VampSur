@@ -47,6 +47,14 @@ World::World(GameConfig cfg)
                  r.emplace<Lifetime>(e);
                  r.emplace<MagnetOrb>(e);
              })
+    , healOrbs(registry,
+           static_cast<std::size_t>(config.healOrb.poolCapacity),
+           [](entt::registry& r, entt::entity e) {
+               r.emplace<Position>(e);
+               r.emplace<Velocity>(e);
+               r.emplace<RenderCircle>(e);
+               r.emplace<HealOrb>(e);
+           })
     , enemySpatial(64.0f)
 {
     particles.reserve(static_cast<std::size_t>(config.effects.particlePool));
@@ -83,6 +91,11 @@ void World::reset() {
     registry.view<MagnetOrbTag>(entt::exclude<Inactive>).each(
         [&](auto e) { toRelease.push_back(e); });
     for (auto e : toRelease) magnetOrbs.release(e);
+    
+    toRelease.clear();
+    registry.view<HealOrbTag>(entt::exclude<Inactive>).each(
+        [&](auto e) { toRelease.push_back(e); });
+    for (auto e : toRelease) healOrbs.release(e);
 
     if (auto pe = findPlayer(registry); pe != entt::null) {
         registry.destroy(pe);

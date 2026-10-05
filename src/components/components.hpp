@@ -95,4 +95,7 @@ struct BossTag {};
 
 struct MagnetOrbTag {};
 struct MagnetOrb    { float pullDuration = 4.0f; };
+
+struct HealOrbTag {};
+struct HealOrb   { float amount = 15.0f; };
 }

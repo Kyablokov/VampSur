@@ -88,6 +88,16 @@ inline void configureEnemy(entt::registry& r, entt::entity e,
     r.remove<BossTag>(e);   // на случай, если сущность была боссом в прошлой жизни
 }
 
+
+inline void configureHealOrb(entt::registry& r, entt::entity e,
+                             float x, float y, const HealOrbConfig& cfg) {
+    r.replace<Position>     (e, x, y);
+    r.replace<Velocity>     (e, 0.0f, 0.0f);
+    r.replace<RenderCircle> (e, cfg.radius, cfg.color);
+    r.replace<HealOrb>      (e, cfg.healAmount);
+}
+
+
 inline void configureProjectile(entt::registry& r, entt::entity e,
                                 float x, float y, float vx, float vy,
                                 const Weapon& w) {

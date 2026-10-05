@@ -168,15 +168,17 @@ void drawHUD(const World& w) {
         DrawRectangle(10, 184, 202, 22, Fade(BLACK, 0.6f));
         DrawRectangle(11, 185, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
-                 16, 188, 16, RAYWHITE);
+                 16, 202, 16, RAYWHITE);
     }
 
     if (w.state.magnetTimer > 0.0f) {
         DrawText(TextFormat("MAGNET: %.1fs", w.state.magnetTimer),
-                 10, 218, 18, Color{ 255, 100, 200, 255 });
+                 10, 236, 18, Color{ 255, 100, 200, 255 });
     }
+    DrawText(TextFormat("Heal orbs: %zu / %zu", w.healOrbs.active(), w.healOrbs.capacity()),
+         10, 176, 16, ORANGE);
 
-    DrawText("[ESC] pause", 10, 242, 16, Color{ 140, 150, 170, 255 });
+    DrawText("[ESC] pause", 10, 260, 16, Color{ 140, 150, 170, 255 });
 }
 
 // ---------------------------------------------------------------- upgrade cards
@@ -468,6 +470,7 @@ int main() {
                 chasePlayer      (world, dt);
                 updateXPMagnet   (world, dt);
                 updateMagnets    (world, dt);
+                updateHealOrbs(world, dt);
                 updateMovement   (world, dt);
 
                 rebuildSpatial   (world);
@@ -481,6 +484,7 @@ int main() {
                 resolveContactDamage (world, dt);
                 resolveXPPickup      (world);
                 resolveMagnetPickup  (world);
+                resolveHealPickup(world);
                 checkLevelUp         (world);
 
                 // Эффекты (шаг 12)
@@ -574,6 +578,7 @@ int main() {
                 renderOrbit(world);
                 renderCircles(world.registry);
                 renderMagnets(world);
+                renderHealOrbs(world);
                 renderBossHP(world);
                 renderLightning(world);
                 world.particles.render();        // ← частицы
@@ -581,7 +586,7 @@ int main() {
             EndMode2D();
 
             DrawFPS(10, 10);
-            DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 268, 16, LIME);
+            DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 286, 16, LIME);
             drawXPBar(world);
             drawHUD(world);
             drawUpgradeHUD(world);

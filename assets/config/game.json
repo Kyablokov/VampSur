@@ -64,6 +64,13 @@
     "pull_duration": 4.0,
     "pool_capacity": 16
   },
+  "heal_orb": {
+    "heal_amount": 15.0,
+    "drop_chance": 0.05,
+    "radius": 6.0,
+    "color": [100, 255, 120, 255],
+    "pool_capacity": 32
+  },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
   "combat":  { "player_hp": 70.0, "player_invuln_time": 0.6 },
   "effects": {

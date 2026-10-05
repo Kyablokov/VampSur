@@ -152,6 +152,15 @@ struct EffectsConfig {
     float shakeOnBossDeath      = 14.0f;
     float hitFlashDuration      = 0.08f;
 };
+
+struct HealOrbConfig {
+    float healAmount  = 15.0f;
+    float dropChance  = 0.05f;
+    float radius      = 6.0f;
+    Color color       = {100, 255, 120, 255};
+    int   poolCapacity = 32;
+};
+
 struct GameConfig {
     WindowConfig                 window;
     PlayerConfig                 player;
@@ -170,6 +179,7 @@ struct GameConfig {
     MagnetConfig magnet;
     EffectsConfig effects;
     AudioConfig audio;
+    HealOrbConfig healOrb;
 };
 
 

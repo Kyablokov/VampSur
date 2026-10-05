@@ -46,6 +46,10 @@ void updateScreenShake (World& w, float dt);
 void addShake (World& w, float intensity, float duration);
 void applyHit(World& w, entt::entity enemy);
 
+void updateHealOrbs   (World& w, float dt);
+void resolveHealPickup(World& w);
+void renderHealOrbs   (World& w);
+
 // Единая точка обработки смерти врага: дроп XP, магнита, возврат в пул.
 // Все системы, которые наносят урон, должны вызывать это.
 void killEnemy(World& w, entt::entity e);
