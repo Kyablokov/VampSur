@@ -10,6 +10,9 @@
 #include "core/spatial_hash.hpp"
 #include "components/components.hpp"
 #include "core/particles.hpp"
+#include "core/audio.hpp"
+
+
 namespace vk {
 
 inline entt::entity findPlayer(entt::registry& r) {
@@ -35,9 +38,13 @@ struct World {
 
     ParticleSystem     particles;
     DamageNumberSystem damageNumbers;
+    
+    Audio audio;
+
 
     // Рекорды и статистика — живут между reset(), не обнуляются.
     SaveData saveData;
+    
 
     explicit World(GameConfig cfg);
 

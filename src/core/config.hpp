@@ -111,7 +111,13 @@ struct SpawnerConfig {
     float distance   = 700.0f;
     int   maxEnemies = 500;
 };
-
+struct AudioConfig {
+    float masterVolume        = 0.7f;
+    float sfxVolume           = 1.0f;
+    float musicVolume         = 0.35f;
+    float killSfxMinInterval  = 0.03f;
+    float hitSfxMinInterval   = 0.02f;
+};
 struct CombatConfig {
     float playerHp         = 70.0f;
     float playerInvulnTime = 0.6f;
@@ -163,6 +169,7 @@ struct GameConfig {
     DifficultyConfig difficulty;
     MagnetConfig magnet;
     EffectsConfig effects;
+    AudioConfig audio;
 };
 
 

@@ -11,6 +11,7 @@
 #include "core/upgrades.hpp"
 #include "core/world.hpp"
 #include "systems/systems.hpp"
+#include "core/audio.hpp"
 
 using namespace vk;
 
@@ -424,7 +425,11 @@ int main() {
     SetTargetFPS(config.window.targetFps);
     SetExitKey(KEY_NULL);
 
+
     World world(config);
+    world.audio.init(config.audio);
+    world.audio.playMusic("music/bgm.ogg", true);
+
     world.spawnPlayer();
     world.state.mode = GameMode::MainMenu;
 
@@ -439,9 +444,13 @@ int main() {
     while (!WindowShouldClose()) {
         const float dt = GetFrameTime();
 
+
         // ----------------------------------------------------------------
         // Логика
         // ----------------------------------------------------------------
+        
+        world.audio.update();
+
         switch (world.state.mode) {
             case GameMode::MainMenu: {
                 if (handleMainMenuInput(world)) {
@@ -482,7 +491,9 @@ int main() {
 
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
                     world.state.mode = GameMode::Paused;
+                    world.audio.setMusicPaused(true);
                 }
+                
                 break;
             }
 
@@ -496,6 +507,7 @@ int main() {
             case GameMode::Paused: {
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
                     world.state.mode = GameMode::Playing;
+                    world.audio.setMusicPaused(false);
                 }
                 break;
             }
@@ -587,6 +599,7 @@ int main() {
         EndDrawing();
     }
 
+    world.audio.shutdown();
     CloseWindow();
     return 0;
 }

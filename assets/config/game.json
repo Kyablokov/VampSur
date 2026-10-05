@@ -79,5 +79,12 @@
     "shake_on_boss_death": 14.0,
     "hit_flash_duration": 0.08
   },
+  "audio": {
+    "master_volume": 0.7,
+    "sfx_volume": 1.0,
+    "music_volume": 0.35,
+    "kill_sfx_min_interval": 0.03,
+    "hit_sfx_min_interval": 0.02
+  },
   "world":   { "grid_size": 64, "background_color": [18, 18, 24, 255], "grid_color": [55, 55, 75, 255] }
 }

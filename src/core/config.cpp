@@ -246,6 +246,14 @@ GameConfig loadGameConfig(const std::string& path) {
         config.effects.shakeOnBossDeath      = e.value("shake_on_boss_death",     config.effects.shakeOnBossDeath);
         config.effects.hitFlashDuration      = e.value("hit_flash_duration",      config.effects.hitFlashDuration);
     }
+    if (j.contains("audio")) {
+        const auto& a = j["audio"];
+        config.audio.masterVolume       = a.value("master_volume",          config.audio.masterVolume);
+        config.audio.sfxVolume          = a.value("sfx_volume",             config.audio.sfxVolume);
+        config.audio.musicVolume        = a.value("music_volume",           config.audio.musicVolume);
+        config.audio.killSfxMinInterval = a.value("kill_sfx_min_interval",  config.audio.killSfxMinInterval);
+        config.audio.hitSfxMinInterval  = a.value("hit_sfx_min_interval",   config.audio.hitSfxMinInterval);
+    }
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
@@ -351,7 +359,13 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "shake_on_boss_death",     c.effects.shakeOnBossDeath },
         { "hit_flash_duration",      c.effects.hitFlashDuration },
     };
-
+    j["audio"] = {
+        { "master_volume",          c.audio.masterVolume },
+        { "sfx_volume",             c.audio.sfxVolume },
+        { "music_volume",           c.audio.musicVolume },
+        { "kill_sfx_min_interval",  c.audio.killSfxMinInterval },
+        { "hit_sfx_min_interval",   c.audio.hitSfxMinInterval },
+    };
     std::ofstream out(path);
 
     if (!out.is_open()) { TraceLog(LOG_ERROR, "Cannot write config to '%s'", path.c_str()); return; }

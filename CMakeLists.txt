@@ -48,6 +48,7 @@ add_executable(vampire_like
     src/core/upgrades.cpp
     src/core/save.cpp
     src/core/particles.cpp       # ← добавить
+    src/core/audio.cpp       # ← добавить
     src/systems/systems.cpp
 )
 

@@ -229,7 +229,9 @@ void updateWeapons(World& w, float dt) {
                         YELLOW, { 255, 100, 50, 0 },
                         0.15f, 8.0f, w.state.rngState);
 
+    w.audio.play("shoot", 0.95f + randRange(w.state.rngState, 0.0f, 0.1f));
     addShake(w, w.config.effects.shakeOnShoot, 0.08f);
+
 }
 
 // ---------------------------------------------------------------- projectiles
@@ -270,6 +272,7 @@ void killEnemy(World& w, entt::entity e) {
                                8.0f, 0.0f,
                                YELLOW, { 255, 100, 100, 0 },
                                0.7f, 2.0f, w.state.rngState);
+        w.audio.play("boss_death");
         addShake(w, w.config.effects.shakeOnBossDeath, 0.35f);
     }
 
@@ -322,6 +325,8 @@ void resolveProjectileHits(World& w) {
                                     w.config.effects.damageNumbersLifetime);
 
                 applyHit(w, e);
+                
+                w.audio.play("hit", 0.9f + randRange(w.state.rngState, 0.0f, 0.2f));
 
                 if (hp.current <= 0.0f) killedEnemies.push_back(e);
 
@@ -380,6 +385,7 @@ void resolveContactDamage(World& w, float dt) {
 
     auto& hp = w.registry.get<Health>(pe);
     w.state.stats.damageTaken += damage;
+    w.audio.play("player_hit");
     hp.current -= damage;
     w.registry.emplace_or_replace<Invulnerability>(pe, w.config.combat.playerInvulnTime);
 
@@ -624,6 +630,8 @@ void resolveXPPickup(World& w) {
             const float dy = pos.y - ppos.y;
             const float r = prc.radius + rc.radius + 2.0f;
             if (dx * dx + dy * dy <= r * r) {
+                w.audio.play("pickup", 0.9f + randRange(w.state.rngState, 0.0f, 0.3f));
+
                 xp.current += orb.value;
                 picked.push_back(e);
             }
@@ -644,7 +652,10 @@ void checkLevelUp(World& w) {
     xp.level  += 1;
     xp.needed  = static_cast<float>(xpNeededForLevel(w.config.xp, xp.level));
 
+    
     rollUpgrades(w);
+    w.audio.play("levelup");
+
     w.state.mode = GameMode::Upgrading;
 }
 
@@ -721,6 +732,8 @@ void resolveMagnetPickup(World& w) {
             const float r = prc.radius + rc.radius + 2.0f;
             if (dx * dx + dy * dy <= r * r) {
                 // Активируем магнит-режим
+                w.audio.play("levelup", 1.2f);
+
                 w.state.magnetTimer = std::max(w.state.magnetTimer, mag.pullDuration);
                 picked.push_back(e);
             }
