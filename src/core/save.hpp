@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
+
+#include "core/config.hpp"
 
 namespace vk {
 
@@ -22,6 +25,16 @@ struct SaveData {
     bool newBestTime  = false;
     bool newBestLevel = false;
     bool newBestKills = false;
+
+    int gold = 0;
+    std::unordered_map<std::string, int> permanentBonuses;   // id -> level
+
+    // helper: сколько золота всего вложено (для отображения)
+    int totalPerkLevels() const {
+        int sum = 0;
+        for (auto& [id, lvl] : permanentBonuses) sum += lvl;
+        return sum;
+    }
 };
 
 // Возвращает путь к save.json (не создаёт файл).
@@ -36,4 +49,6 @@ void writeSaveFile(const SaveData& data);
 // Обнуляет переданную структуру и пишет её в файл.
 void clearSaveFile();
 
+// Стоимость следующего уровня перка (level — текущий)
+int perkCost(const ShopItemConfig& item, int currentLevel);
 }

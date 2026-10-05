@@ -102,9 +102,47 @@ std::vector<UpgradeConfig> loadUpgradesConfig(const std::string& path) {
     return out;
 }
 
+
+std::vector<ShopItemConfig> loadShopConfig(const std::string& path) {
+    std::vector<ShopItemConfig> out;
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        TraceLog(LOG_WARNING, "Shop config not found at '%s'", path.c_str());
+        return out;
+    }
+
+    json j;
+    try { file >> j; }
+    catch (const std::exception& e) {
+        TraceLog(LOG_ERROR, "Failed to parse shop '%s': %s", path.c_str(), e.what());
+        return out;
+    }
+
+    if (!j.contains("perks") || !j["perks"].is_array()) return out;
+
+    for (const auto& p : j["perks"]) {
+        ShopItemConfig cfg;
+        cfg.id          = p.value("id",          "");
+        cfg.name        = p.value("name",        "");
+        cfg.description = p.value("description", "");
+        cfg.baseCost    = p.value("base_cost",   50);
+        cfg.costGrowth  = p.value("cost_growth", 1.5f);
+        cfg.maxLevel    = p.value("max_level",   10);
+        if (cfg.id.empty()) continue;
+        out.push_back(std::move(cfg));
+    }
+    TraceLog(LOG_INFO, "Loaded %zu shop perks from '%s'", out.size(), path.c_str());
+    return out;
+}
+
 GameConfig loadGameConfig(const std::string& path) {
     GameConfig config;
     config.enemyTypes.push_back(EnemyTypeConfig{});
+
+
+    config.upgrades  = loadUpgradesConfig(findInAssets("upgrades.json"));
+    config.shopItems = loadShopConfig(findInAssets("shop.json"));
 
     const std::string actualPath = path.empty() ? findInAssets("game.json") : path;
     std::ifstream file(actualPath);
@@ -288,7 +326,16 @@ GameConfig loadGameConfig(const std::string& path) {
         if (r.contains("color"))            config.rangedBoss.color           = parseColor(r["color"],            config.rangedBoss.color);
         if (r.contains("projectile_color")) config.rangedBoss.projectileColor = parseColor(r["projectile_color"], config.rangedBoss.projectileColor);
     }
-    config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
+    if (j.contains("gold")) {
+        const auto& g = j["gold"];
+        config.gold.dropChance   = g.value("drop_chance",    config.gold.dropChance);
+        config.gold.bossDropMin  = g.value("boss_drop_min",  config.gold.bossDropMin);
+        config.gold.bossDropMax  = g.value("boss_drop_max",  config.gold.bossDropMax);
+        config.gold.coinRadius   = g.value("coin_radius",    config.gold.coinRadius);
+        config.gold.poolCapacity = g.value("pool_capacity",  config.gold.poolCapacity);
+        config.gold.magnetSpeed  = g.value("magnet_speed",   config.gold.magnetSpeed);
+        if (g.contains("coin_color")) config.gold.coinColor = parseColor(g["coin_color"], config.gold.coinColor);
+    }
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
     return config;
@@ -425,6 +472,15 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "projectile_radius", c.rangedBoss.projectileRadius },
         { "projectile_color", colorToJson(c.rangedBoss.projectileColor) },
         { "pool_capacity", c.rangedBoss.poolCapacity },
+    };
+    j["gold"] = {
+        { "drop_chance",   c.gold.dropChance },
+        { "boss_drop_min", c.gold.bossDropMin },
+        { "boss_drop_max", c.gold.bossDropMax },
+        { "coin_radius",   c.gold.coinRadius },
+        { "coin_color",    colorToJson(c.gold.coinColor) },
+        { "pool_capacity", c.gold.poolCapacity },
+        { "magnet_speed",  c.gold.magnetSpeed },
     };
     std::ofstream out(path);
 

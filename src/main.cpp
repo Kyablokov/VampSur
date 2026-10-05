@@ -12,6 +12,7 @@
 #include "core/world.hpp"
 #include "systems/systems.hpp"
 #include "core/audio.hpp"
+#include "core/save.hpp"   // если ещё нет (для perkCost)
 
 using namespace vk;
 
@@ -148,6 +149,8 @@ void drawBuildPanel(const World& w) {
 void drawHUD(const World& w) {
     const int minutes = static_cast<int>(w.state.timeSeconds) / 60;
     const int seconds = static_cast<int>(w.state.timeSeconds) % 60;
+
+    
     DrawText(TextFormat("%02d:%02d", minutes, seconds),
              w.config.window.width / 2 - 40, 30, 34, RAYWHITE);
 
@@ -165,7 +168,7 @@ void drawHUD(const World& w) {
     DrawText(TextFormat("Enemy bullets: %zu / %zu",
                     w.enemyProjectiles.active(), w.enemyProjectiles.capacity()),
          10, 176, 16, ORANGE);
-
+        
 
     auto pv = w.registry.view<PlayerTag, Health>();
     if (pv.begin() != pv.end()) {
@@ -182,6 +185,13 @@ void drawHUD(const World& w) {
                  10, 236, 18, Color{ 255, 100, 200, 255 });
     }
 
+    
+    const auto& sd = w.saveData;
+    const char* goldText = TextFormat("Gold: %d", sd.gold);
+    const int goldW = MeasureText(goldText, 22);
+    DrawText(goldText, w.config.window.width - goldW - 20, 60, 22,
+             Color{ 255, 220, 80, 255 });
+
 
     DrawText("[ESC] pause", 10, 260, 16, Color{ 140, 150, 170, 255 });
 }
@@ -196,6 +206,10 @@ Rectangle cardRect(int slot, int screenW, int screenH) {
     const float startX = (screenW - total) * 0.5f;
     const float y = (screenH - cardH) * 0.5f + 40.0f;
     return { startX + slot * (cardW + gap), y, cardW, cardH };
+}
+
+Rectangle shopButtonRect(int sw, int sh) {
+    return { sw/2.0f - 200.0f, sh/2.0f + 120.0f, 400.0f, 42.0f };
 }
 
 struct RarityStyle {
@@ -355,6 +369,109 @@ Rectangle resetButtonRect(int sw, int sh) {
     return { sw/2.0f - 200.0f, sh/2.0f + 60.0f, 400.0f, 42.0f };
 }
 
+
+
+
+void drawShopScreen(World& w) {
+    const int sw = w.config.window.width;
+    const int sh = w.config.window.height;
+
+    ClearBackground(Color{ 15, 15, 25, 255 });
+
+    const char* title = "SHOP";
+    DrawText(title, sw/2 - MeasureText(title, 56)/2, 40, 56, GOLD);
+
+    // Золото сверху
+    const char* goldText = TextFormat("Gold: %d", w.saveData.gold);
+    DrawText(goldText, sw/2 - MeasureText(goldText, 24)/2, 110, 24,
+             Color{ 255, 220, 80, 255 });
+
+    // Перки
+    const auto& items = w.config.shopItems;
+    const Vector2 mouse = GetMousePosition();
+    int y = 170;
+
+    for (const auto& item : items) {
+        int currentLvl = 0;
+        auto it = w.saveData.permanentBonuses.find(item.id);
+        if (it != w.saveData.permanentBonuses.end()) currentLvl = it->second;
+
+        const int cost = perkCost(item, currentLvl);
+        const bool maxed = (currentLvl >= item.maxLevel);
+        const bool canBuy = !maxed && (w.saveData.gold >= cost);
+
+        const Rectangle r = { sw/2.0f - 400.0f, static_cast<float>(y), 800.0f, 60.0f };
+        const bool hov = CheckCollisionPointRec(mouse, r);
+
+        // Фон
+        Color bg = Color{ 25, 25, 40, 255 };
+        if (maxed) bg = Color{ 20, 30, 25, 255 };
+        else if (!canBuy) bg = Color{ 30, 20, 20, 255 };
+        else if (hov) bg = Color{ 40, 40, 65, 255 };
+
+        DrawRectangleRec(r, bg);
+        DrawRectangleLinesEx(r, 1.5f, Color{ 70, 70, 110, 255 });
+
+        // Название + описание
+        DrawText(item.name.c_str(),
+                 static_cast<int>(r.x) + 20, static_cast<int>(r.y) + 10, 22, RAYWHITE);
+        DrawText(item.description.c_str(),
+                 static_cast<int>(r.x) + 20, static_cast<int>(r.y) + 36, 15,
+                 Color{ 180, 190, 210, 255 });
+
+        // Уровень
+        const std::string lvlText = TextFormat("Lv %d / %d", currentLvl, item.maxLevel);
+        DrawText(lvlText.c_str(),
+                 static_cast<int>(r.x + r.width) - 280, static_cast<int>(r.y) + 20,
+                 20, Color{ 200, 210, 230, 255 });
+
+        // Кнопка Buy
+        const Rectangle buyBtn = {
+            r.x + r.width - 180.0f, r.y + 10.0f, 160.0f, 40.0f
+        };
+
+        if (maxed) {
+            DrawRectangleRec(buyBtn, Color{ 30, 50, 35, 255 });
+            DrawRectangleLinesEx(buyBtn, 1.5f, Color{ 80, 180, 100, 255 });
+            const char* txt = "MAXED";
+            DrawText(txt,
+                     static_cast<int>(buyBtn.x + buyBtn.width/2 - MeasureText(txt, 20)/2),
+                     static_cast<int>(buyBtn.y + 10), 20, Color{ 120, 220, 140, 255 });
+        } else {
+            const Color btnColor = canBuy
+                ? (CheckCollisionPointRec(mouse, buyBtn)
+                    ? Color{ 80, 160, 80, 255 } : Color{ 50, 110, 50, 255 })
+                : Color{ 60, 40, 40, 255 };
+
+            DrawRectangleRec(buyBtn, btnColor);
+            DrawRectangleLinesEx(buyBtn, 1.5f,
+                                 canBuy ? Color{ 100, 220, 100, 255 } : Color{ 100, 60, 60, 255 });
+
+            const char* txt = TextFormat("Buy: %d", cost);
+            DrawText(txt,
+                     static_cast<int>(buyBtn.x + buyBtn.width/2 - MeasureText(txt, 20)/2),
+                     static_cast<int>(buyBtn.y + 10), 20,
+                     canBuy ? RAYWHITE : Color{ 160, 120, 120, 255 });
+
+            if (canBuy && hov &&
+                CheckCollisionPointRec(mouse, buyBtn) &&
+                IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                w.saveData.gold -= cost;
+                w.saveData.permanentBonuses[item.id] = currentLvl + 1;
+                writeSaveFile(w.saveData);
+                w.audio.play("levelup", 1.3f);
+            }
+        }
+
+        y += 70;
+    }
+
+    // Назад
+    const char* back = "Press ESC / ENTER to return";
+    DrawText(back, sw/2 - MeasureText(back, 20)/2, sh - 60, 20,
+             Color{ 180, 190, 210, 255 });
+}
+
 void drawMainMenu(const World& w) {
     const int sw = w.config.window.width;
     const int sh = w.config.window.height;
@@ -380,6 +497,7 @@ void drawMainMenu(const World& w) {
 
     const Rectangle playBtn  = playButtonRect(sw, sh);
     const Rectangle resetBtn = resetButtonRect(sw, sh);
+
     const Vector2 mouse = GetMousePosition();
 
     {
@@ -403,6 +521,18 @@ void drawMainMenu(const World& w) {
                  static_cast<int>(resetBtn.y + 12), 18, Color{ 220, 180, 180, 255 });
     }
 
+    {
+        const Rectangle shopBtn = shopButtonRect(sw, sh);
+        const bool hov = CheckCollisionPointRec(mouse, shopBtn);
+        DrawRectangleRec(shopBtn, hov ? Color{ 60, 60, 120, 255 } : Color{ 35, 35, 70, 255 });
+        DrawRectangleLinesEx(shopBtn, 1.5f,
+                            hov ? Color{ 140, 140, 240, 255 } : Color{ 80, 80, 160, 255 });
+        const char* txt = "Shop (S)";
+        DrawText(txt,
+                static_cast<int>(shopBtn.x + shopBtn.width/2 - MeasureText(txt, 18)/2),
+                static_cast<int>(shopBtn.y + 12), 18, Color{ 200, 200, 240, 255 });
+    }
+
     DrawText("Press ENTER to play",
              sw/2 - MeasureText("Press ENTER to play", 18)/2,
              sh - 60, 18, Color{ 140, 150, 170, 255 });
@@ -415,6 +545,7 @@ bool handleMainMenuInput(World& w) {
     if (IsKeyPressed(KEY_R)) {
         w.resetSaveFile();
     }
+    if (IsKeyPressed(KEY_S)) return false;   // обрабатываем в Menu через прямую смену mode
 
     const int sw = w.config.window.width;
     const int sh = w.config.window.height;
@@ -468,8 +599,38 @@ int main() {
 
         switch (world.state.mode) {
             case GameMode::MainMenu: {
-                if (handleMainMenuInput(world)) {
+                if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
                     world.reset();
+                }
+                if (IsKeyPressed(KEY_R)) {
+                    world.resetSaveFile();
+                }
+                if (IsKeyPressed(KEY_S)) {
+                    world.state.mode = GameMode::Shop;
+                }
+                // клик по кнопкам
+                const int sw = world.config.window.width;
+                const int sh = world.config.window.height;
+                const Vector2 mouse = GetMousePosition();
+                if (CheckCollisionPointRec(mouse, playButtonRect(sw, sh)) &&
+                    IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                    world.reset();
+                }
+                if (CheckCollisionPointRec(mouse, resetButtonRect(sw, sh)) &&
+                    IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                    world.resetSaveFile();
+                }
+                if (CheckCollisionPointRec(mouse, shopButtonRect(sw, sh)) &&
+                    IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                    world.state.mode = GameMode::Shop;
+                }
+                break;
+            }
+
+            case GameMode::Shop: {
+                if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) ||
+                    IsKeyPressed(KEY_KP_ENTER)) {
+                    world.state.mode = GameMode::MainMenu;
                 }
                 break;
             }
@@ -484,6 +645,7 @@ int main() {
                 updateXPMagnet   (world, dt);
                 updateMagnets    (world, dt);
                 updateHealOrbs(world, dt);
+                updateCoins(world, dt);
                 updateChests(world, dt);       // после updateHealOrbs
                 updateRangedBosses(world, dt);
                 updateEnemyProjectiles(world, dt);
@@ -501,6 +663,7 @@ int main() {
                 resolveXPPickup      (world);
                 resolveMagnetPickup  (world);
                 resolveHealPickup(world);
+                resolveCoinPickup(world);
                 resolveChestPickup(world);     // после resolveHealPickup
                 resolveEnemyProjectileHits(world);
                 checkLevelUp         (world);
@@ -591,6 +754,8 @@ int main() {
 
         if (world.state.mode == GameMode::MainMenu) {
             drawMainMenu(world);
+        }  else if (world.state.mode == GameMode::Shop) {
+            drawShopScreen(world); 
         } else {
             ClearBackground(config.world.backgroundColor);
 
@@ -602,6 +767,7 @@ int main() {
                 renderCircles(world.registry);
                 renderMagnets(world);
                 renderHealOrbs(world);
+                renderCoins(world);
                 renderChests(world);
                 renderBossHP(world);
                 renderLightning(world);

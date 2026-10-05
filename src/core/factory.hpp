@@ -2,6 +2,9 @@
 
 #include <entt/entt.hpp>
 
+#include <cmath>
+#include <unordered_map>
+
 #include "components/components.hpp"
 #include "core/config.hpp"
 
@@ -14,7 +17,8 @@ inline entt::entity createPlayer(entt::registry& registry,
                                  const AuraConfig&      acfg,
                                  const OrbitConfig&     ocfg,
                                  const LightningConfig& lcfg,
-                                 const XPConfig&        xcfg) {
+                                 const XPConfig&        xcfg,
+                                 const std::unordered_map<std::string, int>& bonuses) {
     const auto e = registry.create();
     registry.emplace<Position>     (e, pcfg.startX, pcfg.startY);
     registry.emplace<Velocity>     (e, 0.0f, 0.0f);
@@ -70,6 +74,44 @@ inline entt::entity createPlayer(entt::registry& registry,
     lightning.boltLifetime = lcfg.boltLifetime;
     lightning.color        = lcfg.color;
     registry.emplace<LightningWeapon>(e, lightning);
+
+
+        // Применяем постоянные бонусы из магазина
+    auto getLevel = [&](const char* id) {
+        auto it = bonuses.find(id);
+        return it == bonuses.end() ? 0 : it->second;
+    };
+
+    const int dmgLvl   = getLevel("perm_damage");
+    const int hpLvl    = getLevel("perm_hp");
+    const int spdLvl   = getLevel("perm_speed");
+    const int pickLvl  = getLevel("perm_pickup");
+    const int fireLvl  = getLevel("perm_fire_rate");
+    const int xpLvl    = getLevel("perm_xp");
+
+    if (dmgLvl > 0) {
+        auto& w = registry.get<Weapon>(e);
+        w.projectileDamage *= (1.0f + 0.05f * dmgLvl);
+    }
+    if (hpLvl > 0) {
+        auto& h = registry.get<Health>(e);
+        h.max     += 10.0f * hpLvl;
+        h.current  = h.max;
+    }
+    if (spdLvl > 0) {
+        registry.get<Speed>(e).value *= (1.0f + 0.03f * spdLvl);
+    }
+    if (pickLvl > 0) {
+        registry.get<PickupRadius>(e).value *= (1.0f + 0.05f * pickLvl);
+    }
+    if (fireLvl > 0) {
+        auto& w = registry.get<Weapon>(e);
+        w.cooldown = std::max(0.05f, w.cooldown * std::pow(0.97f, static_cast<float>(fireLvl)));
+    }
+    if (xpLvl > 0) {
+        auto& xp = registry.get<XP>(e);
+        xp.needed *= std::pow(0.95f, static_cast<float>(xpLvl));
+    }
 
     return e;
 }
@@ -145,6 +187,14 @@ inline void configureHealOrb(entt::registry& r, entt::entity e,
     r.replace<HealOrb>      (e, cfg.healAmount);
 }
 
+
+inline void configureCoin(entt::registry& r, entt::entity e,
+                          float x, float y, int value, const GoldConfig& cfg) {
+    r.replace<Position>     (e, x, y);
+    r.replace<Velocity>     (e, 0.0f, 0.0f);
+    r.replace<RenderCircle> (e, cfg.coinRadius, cfg.coinColor);
+    r.replace<Coin>         (e, value);
+}
 
 inline void configureProjectile(entt::registry& r, entt::entity e,
                                 float x, float y, float vx, float vy,

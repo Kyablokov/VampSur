@@ -95,6 +95,15 @@
     "color": [255, 200, 80, 255],
     "pool_capacity": 4
   },
+  "gold": {
+    "drop_chance": 0.15,
+    "boss_drop_min": 5,
+    "boss_drop_max": 10,
+    "coin_radius": 5.0,
+    "coin_color": [255, 220, 80, 255],
+    "pool_capacity": 256,
+    "magnet_speed": 500.0
+  },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
   "combat":  { "player_hp": 70.0, "player_invuln_time": 0.6 },
   "effects": {

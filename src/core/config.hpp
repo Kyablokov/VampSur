@@ -186,6 +186,25 @@ struct ChestConfig {
     int   poolCapacity     = 4;
 };
 
+struct GoldConfig {
+    float dropChance   = 0.15f;
+    int   bossDropMin  = 5;
+    int   bossDropMax  = 10;
+    float coinRadius   = 5.0f;
+    Color coinColor    = {255, 220, 80, 255};
+    int   poolCapacity = 256;
+    float magnetSpeed  = 500.0f;
+};
+
+struct ShopItemConfig {
+    std::string id;
+    std::string name;
+    std::string description;
+    int   baseCost   = 50;
+    float costGrowth = 1.5f;
+    int   maxLevel   = 10;
+};
+
 struct GameConfig {
     WindowConfig                 window;
     PlayerConfig                 player;
@@ -207,6 +226,8 @@ struct GameConfig {
     HealOrbConfig healOrb;
     ChestConfig chest;
     RangedBossConfig rangedBoss;
+    GoldConfig                 gold;
+    std::vector<ShopItemConfig> shopItems;
 
 
 };
@@ -215,6 +236,7 @@ struct GameConfig {
 GameConfig loadGameConfig(const std::string& path = "");
 void       saveGameConfig(const GameConfig& config, const std::string& path);
 std::vector<UpgradeConfig> loadUpgradesConfig(const std::string& path);
+std::vector<ShopItemConfig> loadShopConfig(const std::string& path);
 
 inline int xpNeededForLevel(const XPConfig& cfg, int level) {
     return cfg.baseRequirement + (level - 1) * cfg.requirementGrowth;

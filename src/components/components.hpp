@@ -117,4 +117,7 @@ struct HealOrb   { float amount = 15.0f; };
 
 struct ChestTag {};
 struct Chest    { int upgradesRemaining = 3; };
+
+struct CoinTag {};
+struct Coin    { int value = 1; };
 }

@@ -1,6 +1,8 @@
 #include "core/save.hpp"
+#include "core/config.hpp" 
 
 #include <fstream>
+#include <cmath>
 
 #include <nlohmann/json.hpp>
 #include <raylib.h>
@@ -66,6 +68,13 @@ SaveData loadSaveFile() {
     }
     data.totalRuns = j.value("total_runs", data.totalRuns);
 
+    data.gold = j.value("gold", 0);
+    if (j.contains("permanent_bonuses") && j["permanent_bonuses"].is_object()) {
+        for (auto& [k, v] : j["permanent_bonuses"].items()) {
+            data.permanentBonuses[k] = v.get<int>();
+        }
+    }
+
     TraceLog(LOG_INFO, "Save loaded from '%s' (runs=%d)", path.c_str(), data.totalRuns);
     return data;
 }
@@ -83,6 +92,11 @@ void writeSaveFile(const SaveData& data) {
         { "kills", data.lastKills },
     };
     j["total_runs"] = data.totalRuns;
+    j["gold"] = data.gold;
+    j["permanent_bonuses"] = json::object();
+    for (const auto& [id, lvl] : data.permanentBonuses) {
+        j["permanent_bonuses"][id] = lvl;
+    }
 
     const std::string path = getSavePath();
     std::ofstream out(path);
@@ -100,5 +114,10 @@ void clearSaveFile() {
     writeSaveFile(empty);
 }
 
+int perkCost(const ShopItemConfig& item, int currentLevel) {
+    if (currentLevel >= item.maxLevel) return -1;
+    const float cost = item.baseCost * std::pow(item.costGrowth, static_cast<float>(currentLevel));
+    return static_cast<int>(std::round(cost));
+}
 
 } // namespace vk

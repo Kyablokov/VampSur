@@ -72,6 +72,14 @@ World::World(GameConfig cfg)
                     r.emplace<Lifetime>(e);
                     r.emplace<EnemyProjectile>(e);
         })
+    , coins(registry,
+        static_cast<std::size_t>(config.gold.poolCapacity),
+        [](entt::registry& r, entt::entity e) {
+            r.emplace<Position>(e);
+            r.emplace<Velocity>(e);
+            r.emplace<RenderCircle>(e);
+            r.emplace<Coin>(e);
+        })
     , enemySpatial(64.0f)
 {
     particles.reserve(static_cast<std::size_t>(config.effects.particlePool));
@@ -84,7 +92,8 @@ World::World(GameConfig cfg)
 void World::spawnPlayer() {
     createPlayer(registry, config.player, config.combat,
                  config.weapon, config.aura, config.orbit,
-                 config.lightning, config.xp);
+                 config.lightning, config.xp,
+                 saveData.permanentBonuses);
 }
 
 void World::reset() {
@@ -113,6 +122,11 @@ void World::reset() {
     registry.view<HealOrbTag>(entt::exclude<Inactive>).each(
         [&](auto e) { toRelease.push_back(e); });
     for (auto e : toRelease) healOrbs.release(e);
+
+    toRelease.clear();
+    registry.view<CoinTag>(entt::exclude<Inactive>).each(
+        [&](auto e) { toRelease.push_back(e); });
+    for (auto e : toRelease) coins.release(e);
 
     toRelease.clear();
     registry.view<ChestTag>(entt::exclude<Inactive>).each(

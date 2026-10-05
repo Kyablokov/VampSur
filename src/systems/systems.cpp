@@ -307,6 +307,27 @@ void killEnemy(World& w, entt::entity e) {
         }
     }
 
+    // Дроп золота
+    const bool goldDrop = isBoss || (rand01(w.state.rngState) < w.config.gold.dropChance);
+    if (goldDrop) {
+        int amount = 1;
+        if (isBoss) {
+            amount = randInt(w.state.rngState,
+                            w.config.gold.bossDropMin,
+                            w.config.gold.bossDropMax + 1);
+        }
+        for (int i = 0; i < amount; ++i) {
+            if (auto c = w.coins.acquire(); c != entt::null) {
+                // Небольшой разброс, чтобы монеты не слипались в одну точку
+                const float ox = randRange(w.state.rngState, -12.0f, 12.0f);
+                const float oy = randRange(w.state.rngState, -12.0f, 12.0f);
+                configureCoin(w.registry, c, pos.x + ox, pos.y + oy, 1, w.config.gold);
+            } else {
+                break;
+            }
+        }
+    }
+
     // Чест дропается только с босса
     if (isBoss) {
         if (auto ch = w.chests.acquire(); ch != entt::null) {
@@ -1081,6 +1102,76 @@ void renderChests(World& w) {
         });
 }
 
+
+// ---------------------------------------------------------------- coins
+
+void updateCoins(World& w, float dt) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, PickupRadius>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const bool magnetActive = w.state.magnetTimer > 0.0f;
+    const float radius = magnetActive
+        ? 100000.0f
+        : w.registry.get<PickupRadius>(pe).value;
+    const float r2 = radius * radius;
+    const float speed = w.config.gold.magnetSpeed;
+
+    w.registry.view<CoinTag, Position, Velocity>(entt::exclude<Inactive>).each(
+        [&](auto, Position& pos, Velocity& vel) {
+            const float dx = ppos.x - pos.x;
+            const float dy = ppos.y - pos.y;
+            const float d2 = dx * dx + dy * dy;
+            if (d2 > r2) { vel.x = vel.y = 0.0f; return; }
+            const float len = std::sqrt(d2);
+            if (len < 1e-4f) { vel.x = vel.y = 0.0f; return; }
+            const float t = magnetActive ? 1.0f : (1.0f - (len / radius));
+            const float sp = speed * (0.35f + 0.65f * t);
+            vel.x = dx / len * sp;
+            vel.y = dy / len * sp;
+        });
+}
+
+void resolveCoinPickup(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, RenderCircle>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const auto& prc  = w.registry.get<RenderCircle>(pe);
+
+    std::vector<entt::entity> picked;
+    int totalGold = 0;
+
+    w.registry.view<CoinTag, Position, RenderCircle, Coin>(entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, const Coin& c) {
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r = prc.radius + rc.radius + 2.0f;
+            if (dx * dx + dy * dy > r * r) return;
+            totalGold += c.value;
+            picked.push_back(e);
+        });
+
+    if (picked.empty()) return;
+
+    // Золото сразу идёт в saveData (не в state) — оно переживёт смерть
+    w.saveData.gold += totalGold;
+    w.audio.play("pickup", 1.3f);
+
+    for (auto e : picked) w.coins.release(e);
+}
+
+void renderCoins(World& w) {
+    const float t = static_cast<float>(GetTime());
+    w.registry.view<CoinTag, Position, RenderCircle>(entt::exclude<Inactive>).each(
+        [&](auto, const Position& pos, const RenderCircle& rc) {
+            const float pulse = 1.0f + 0.2f * std::sin(t * 8.0f);
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse * 1.8f, Fade(rc.color, 0.25f));
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse, rc.color);
+        });
+}
 
 void renderCircles(entt::registry& r) {
     r.view<Position, RenderCircle>(entt::exclude<Inactive>).each(

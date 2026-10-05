@@ -1,0 +1,52 @@
+{
+  "perks": [
+    {
+      "id": "perm_damage",
+      "name": "+5% Damage",
+      "description": "+5% projectile damage per level.",
+      "base_cost": 50,
+      "cost_growth": 1.5,
+      "max_level": 10
+    },
+    {
+      "id": "perm_hp",
+      "name": "+10 Max HP",
+      "description": "+10 starting max HP per level.",
+      "base_cost": 40,
+      "cost_growth": 1.5,
+      "max_level": 10
+    },
+    {
+      "id": "perm_speed",
+      "name": "+3% Move Speed",
+      "description": "+3% base move speed per level.",
+      "base_cost": 60,
+      "cost_growth": 1.5,
+      "max_level": 8
+    },
+    {
+      "id": "perm_pickup",
+      "name": "+5% Pickup Radius",
+      "description": "+5% pickup radius per level.",
+      "base_cost": 30,
+      "cost_growth": 1.4,
+      "max_level": 8
+    },
+    {
+      "id": "perm_fire_rate",
+      "name": "+3% Fire Rate",
+      "description": "-3% base cooldown per level.",
+      "base_cost": 70,
+      "cost_growth": 1.6,
+      "max_level": 8
+    },
+    {
+      "id": "perm_xp",
+      "name": "-5% XP Needed",
+      "description": "-5% experience required per level.",
+      "base_cost": 80,
+      "cost_growth": 1.5,
+      "max_level": 6
+    }
+  ]
+}

@@ -32,6 +32,7 @@ struct World {
     EntityPool<HealOrbTag> healOrbs;
     EntityPool<ChestTag> chests;
     EntityPool<EnemyProjectileTag> enemyProjectiles;
+    EntityPool<CoinTag> coins;
 
 
     SpatialHash enemySpatial;
