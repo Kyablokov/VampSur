@@ -6,10 +6,11 @@
     "color": [80, 200, 120, 255], "pickup_radius": 120.0
   },
   "enemy_types": [
-    { "id": "grunt",  "speed": 90.0,  "radius": 10.0, "color": [200, 60, 60, 255],   "hp": 20.0, "contact_damage": 8.0,  "xp_value": 1.0, "spawn_weight": 70.0 },
-    { "id": "runner", "speed": 180.0, "radius": 7.0,  "color": [255, 140, 60, 255],  "hp": 10.0, "contact_damage": 6.0,  "xp_value": 1.0, "spawn_weight": 22.0 },
-    { "id": "tank",   "speed": 50.0,  "radius": 18.0, "color": [160, 70, 220, 255],  "hp": 80.0, "contact_damage": 15.0, "xp_value": 5.0, "spawn_weight": 8.0  }
+    { "id": "grunt",  "speed": 90.0,  "radius": 10.0, "color": [200, 60, 60, 255],   "hp": 20.0, "contact_damage": 8.0,  "xp_value": 1.0, "spawn_weight": 70.0, "unlock_time_sec": 0.0 },
+    { "id": "runner", "speed": 180.0, "radius": 7.0,  "color": [255, 140, 60, 255],  "hp": 10.0, "contact_damage": 6.0,  "xp_value": 1.0, "spawn_weight": 22.0, "unlock_time_sec": 60.0},
+    { "id": "tank",   "speed": 50.0,  "radius": 18.0, "color": [160, 70, 220, 255],  "hp": 80.0, "contact_damage": 15.0, "xp_value": 5.0, "spawn_weight": 8.0, "unlock_time_sec": 120.0}
   ],
+  
   "weapon": {
     "cooldown": 0.6, "range": 550.0,
     "projectile_speed": 620.0, "projectile_damage": 10.0,
@@ -55,6 +56,13 @@
     "enemy_hp_growth_per_minute": 0.33,
     "spawn_interval_decay_per_minute": 0.05,
     "spawn_interval_min": 0.15
+  },
+  "magnet": {
+    "radius": 8.0,
+    "color": [255, 100, 200, 255],
+    "lifetime": 20.0,
+    "pull_duration": 4.0,
+    "pool_capacity": 16
   },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
   "combat":  { "player_hp": 100.0, "player_invuln_time": 0.6 },

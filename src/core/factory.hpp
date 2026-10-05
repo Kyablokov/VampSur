@@ -105,4 +105,13 @@ inline void configureXPOrb(entt::registry& r, entt::entity e,
     r.replace<XPOrb>        (e, value);
 }
 
+inline void configureMagnetOrb(entt::registry& r, entt::entity e,
+                               float x, float y, const MagnetConfig& cfg) {
+    r.replace<Position>     (e, x, y);
+    r.replace<Velocity>     (e, 0.0f, 0.0f);
+    r.replace<RenderCircle> (e, cfg.radius, cfg.color);
+    r.replace<Lifetime>     (e, cfg.lifetime);
+    r.replace<MagnetOrb>    (e, cfg.pullDuration);
+}
+
 }

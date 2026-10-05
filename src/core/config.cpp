@@ -49,6 +49,7 @@ EnemyTypeConfig parseEnemyType(const json& e) {
     cfg.contactDamage = e.value("contact_damage", cfg.contactDamage);
     cfg.xpValue       = e.value("xp_value",       cfg.xpValue);
     cfg.spawnWeight   = e.value("spawn_weight",   cfg.spawnWeight);
+    cfg.unlockTimeSec = e.value("unlock_time_sec", cfg.unlockTimeSec);
     if (e.contains("color")) cfg.color = parseColor(e["color"], cfg.color);
     return cfg;
 }
@@ -223,6 +224,14 @@ GameConfig loadGameConfig(const std::string& path) {
         config.difficulty.spawnIntervalDecayPerMinute = d.value("spawn_interval_decay_per_minute", config.difficulty.spawnIntervalDecayPerMinute);
         config.difficulty.spawnIntervalMin            = d.value("spawn_interval_min",              config.difficulty.spawnIntervalMin);
     }
+    if (j.contains("magnet")) {
+        const auto& m = j["magnet"];
+        config.magnet.radius       = m.value("radius",        config.magnet.radius);
+        config.magnet.lifetime     = m.value("lifetime",      config.magnet.lifetime);
+        config.magnet.pullDuration = m.value("pull_duration", config.magnet.pullDuration);
+        config.magnet.poolCapacity = m.value("pool_capacity", config.magnet.poolCapacity);
+        if (m.contains("color")) config.magnet.color = parseColor(m["color"], config.magnet.color);
+    }
 
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
@@ -249,6 +258,7 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
             { "color", colorToJson(e.color) }, { "hp", e.hp },
             { "contact_damage", e.contactDamage },
             { "xp_value", e.xpValue }, { "spawn_weight", e.spawnWeight },
+            { "unlock_time_sec", e.unlockTimeSec }
         });
     }
     j["weapon"] = {
@@ -310,8 +320,14 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "spawn_interval_decay_per_minute", c.difficulty.spawnIntervalDecayPerMinute },
         { "spawn_interval_min", c.difficulty.spawnIntervalMin },
     };
-    
+    j["magnet"] = {
+        { "radius", c.magnet.radius }, { "color", colorToJson(c.magnet.color) },
+        { "lifetime", c.magnet.lifetime }, { "pull_duration", c.magnet.pullDuration },
+        { "pool_capacity", c.magnet.poolCapacity },
+    };
+
     std::ofstream out(path);
+    
     if (!out.is_open()) { TraceLog(LOG_ERROR, "Cannot write config to '%s'", path.c_str()); return; }
     out << j.dump(2) << std::endl;
 }

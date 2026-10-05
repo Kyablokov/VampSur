@@ -52,16 +52,27 @@ namespace {
 
 const EnemyTypeConfig& pickEnemyType(World& w) {
     const auto& types = w.config.enemyTypes;
+    const float now   = w.state.timeSeconds;
+
+    // Собираем только доступные сейчас
     float total = 0.0f;
-    for (const auto& t : types) total += (t.spawnWeight > 0.0f ? t.spawnWeight : 0.0f);
-    if (total <= 0.0f) return types.front();
+    const EnemyTypeConfig* fallback = &types.front();
+    for (const auto& t : types) {
+        if (t.unlockTimeSec > now) continue;
+        if (t.spawnWeight <= 0.0f) continue;
+        total += t.spawnWeight;
+        fallback = &t;
+    }
+    if (total <= 0.0f) return *fallback;
 
     float r = randRange(w.state.rngState, 0.0f, total);
     for (const auto& t : types) {
-        r -= (t.spawnWeight > 0.0f ? t.spawnWeight : 0.0f);
+        if (t.unlockTimeSec > now) continue;
+        if (t.spawnWeight <= 0.0f) continue;
+        r -= t.spawnWeight;
         if (r <= 0.0f) return t;
     }
-    return types.back();
+    return *fallback;
 }
 
 } // namespace
@@ -255,12 +266,20 @@ void resolveProjectileHits(World& w) {
         });
 
     for (auto e : killedEnemies) {
-        w.state.stats.kills += 1;   // ← добавить
+        w.state.stats.kills += 1;
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
             configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
         }
+
+        // Боссы дропают магнит
+        if (w.registry.all_of<BossTag>(e)) {
+            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
+                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
+            }
+        }
+
         w.enemies.release(e);
     }
     for (auto p : hitProjectiles) w.projectiles.release(p);
@@ -341,12 +360,20 @@ void updateAura(World& w, float dt) {
         });
 
     for (auto e : killed) {
-        w.state.stats.kills += 1;   // ← добавить
+        w.state.stats.kills += 1;
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
             configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
         }
+
+        // Боссы дропают магнит
+        if (w.registry.all_of<BossTag>(e)) {
+            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
+                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
+            }
+        }
+
         w.enemies.release(e);
     }
 }
@@ -423,14 +450,23 @@ void resolveOrbitHits(World& w, float dt) {
         });
 
     for (auto e : killed) {
-        w.state.stats.kills += 1;   // ← добавить
+        w.state.stats.kills += 1;
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
             configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
         }
+
+        // Боссы дропают магнит
+        if (w.registry.all_of<BossTag>(e)) {
+            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
+                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
+            }
+        }
+
         w.enemies.release(e);
     }
+    
 }
 
 // ---------------------------------------------------------------- lightning
@@ -506,12 +542,20 @@ void updateLightning(World& w, float dt) {
 
     // Дроп XP и освобождение
     for (auto e : killed) {
-        w.state.stats.kills += 1;   // ← добавить
+        w.state.stats.kills += 1;
         const auto& pos = w.registry.get<Position>(e);
         const float value = w.registry.get<XPValue>(e).value;
         if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
             configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
         }
+
+        // Боссы дропают магнит
+        if (w.registry.all_of<BossTag>(e)) {
+            if (auto mag = w.magnetOrbs.acquire(); mag != entt::null) {
+                configureMagnetOrb(w.registry, mag, pos.x, pos.y, w.config.magnet);
+            }
+        }
+
         w.enemies.release(e);
     }
 }
@@ -519,12 +563,20 @@ void updateLightning(World& w, float dt) {
 // ---------------------------------------------------------------- XP
 
 void updateXPMagnet(World& w, float dt) {
+    // Тикаем таймер магнита
+    if (w.state.magnetTimer > 0.0f) {
+        w.state.magnetTimer -= dt;
+    }
+
     auto pe = findPlayer(w.registry);
     if (pe == entt::null) return;
     if (!w.registry.all_of<Position, PickupRadius>(pe)) return;
 
     const auto& ppos = w.registry.get<Position>(pe);
-    const float radius = w.registry.get<PickupRadius>(pe).value;
+    const bool magnetActive = w.state.magnetTimer > 0.0f;
+    const float radius = magnetActive
+        ? 100000.0f                                  // фактически безлимит
+        : w.registry.get<PickupRadius>(pe).value;
     const float r2 = radius * radius;
     const float speed = w.config.xp.magnetSpeed;
 
@@ -536,12 +588,13 @@ void updateXPMagnet(World& w, float dt) {
             if (d2 > r2) { vel.x = vel.y = 0.0f; return; }
             const float len = std::sqrt(d2);
             if (len < 1e-4f) { vel.x = vel.y = 0.0f; return; }
-            const float t = 1.0f - (len / radius);
+            const float t = magnetActive ? 1.0f : (1.0f - (len / radius));
             const float sp = speed * (0.35f + 0.65f * t);
             vel.x = dx / len * sp;
             vel.y = dy / len * sp;
         });
 }
+
 
 void resolveXPPickup(World& w) {
     auto pe = findPlayer(w.registry);
@@ -626,6 +679,53 @@ void renderLightning(World& w) {
         DrawLineEx(b.from, b.to, 6.0f, Fade(b.color, t * 0.25f));
         DrawLineEx(b.from, b.to, 2.0f, c);
     }
+}
+
+// ---------------------------------------------------------------- magnets
+
+void updateMagnets(World& w, float dt) {
+    std::vector<entt::entity> expired;
+    w.registry.view<MagnetOrbTag, Lifetime>(entt::exclude<Inactive>).each(
+        [&](auto e, Lifetime& lt) {
+            lt.remaining -= dt;
+            if (lt.remaining <= 0.0f) expired.push_back(e);
+        });
+    for (auto e : expired) w.magnetOrbs.release(e);
+}
+
+void resolveMagnetPickup(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, RenderCircle>(pe)) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const auto& prc  = w.registry.get<RenderCircle>(pe);
+
+    std::vector<entt::entity> picked;
+    w.registry.view<MagnetOrbTag, Position, RenderCircle, MagnetOrb>(entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, const MagnetOrb& mag) {
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r = prc.radius + rc.radius + 2.0f;
+            if (dx * dx + dy * dy <= r * r) {
+                // Активируем магнит-режим
+                w.state.magnetTimer = std::max(w.state.magnetTimer, mag.pullDuration);
+                picked.push_back(e);
+            }
+        });
+
+    for (auto e : picked) w.magnetOrbs.release(e);
+}
+
+void renderMagnets(World& w) {
+    // Пульсация радиуса
+    const float t = static_cast<float>(GetTime());
+    w.registry.view<MagnetOrbTag, Position, RenderCircle>(entt::exclude<Inactive>).each(
+        [&](auto, const Position& pos, const RenderCircle& rc) {
+            const float pulse = 1.0f + 0.3f * std::sin(t * 6.0f);
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse * 2.0f, Fade(rc.color, 0.25f));
+            DrawCircleV({ pos.x, pos.y }, rc.radius * pulse, rc.color);
+        });
 }
 
 void renderCircles(entt::registry& r) {

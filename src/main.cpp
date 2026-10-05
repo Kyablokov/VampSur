@@ -148,10 +148,15 @@ void drawHUD(const World& w) {
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
                  16, 170, 16, RAYWHITE);
     }
+    if (w.state.magnetTimer > 0.0f) {
+        DrawText(TextFormat("MAGNET: %.1fs", w.state.magnetTimer),
+                10, 220, 18, Color{ 255, 100, 200, 255 });
+    }
 
     // Подсказка
-    DrawText("[ESC] pause", 10, 200, 16, Color{ 140, 150, 170, 255 });
+    DrawText("[ESC] pause", 10, 244, 16, Color{ 140, 150, 170, 255 });
 }
+
 
 Rectangle cardRect(int slot, int screenW, int screenH) {
     constexpr float cardW = 340.0f;
@@ -335,6 +340,8 @@ int main() {
                 updateMovement   (world, dt);   
                 chasePlayer      (world, dt);
                 updateXPMagnet   (world, dt);
+                updateMagnets     (world, dt);
+                resolveMagnetPickup(world);
                 updateMovement   (world, dt);
 
                 rebuildSpatial   (world);
@@ -393,6 +400,7 @@ int main() {
             renderAura(world);
             renderOrbit(world);
             renderCircles(world.registry);
+            renderMagnets(world);
             renderBossHP(world);   // ← добавить
             renderLightning(world);
         EndMode2D();

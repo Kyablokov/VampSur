@@ -31,6 +31,14 @@ struct EnemyTypeConfig {
     float       contactDamage = 8.0f;
     float       xpValue       = 1.0f;
     float       spawnWeight   = 1.0f;
+    float       unlockTimeSec = 0.0f;   // ← новое
+};
+struct MagnetConfig {
+    float radius       = 8.0f;
+    Color color        = {255, 100, 200, 255};
+    float lifetime     = 20.0f;
+    float pullDuration = 4.0f;
+    int   poolCapacity = 16;
 };
 
 struct WeaponConfig {
@@ -140,6 +148,7 @@ struct GameConfig {
     std::vector<UpgradeConfig>   upgrades;
     BossConfig       boss;
     DifficultyConfig difficulty;
+    MagnetConfig magnet;
 };
 
 

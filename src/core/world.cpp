@@ -38,6 +38,15 @@ World::World(GameConfig cfg)
                  r.emplace<RenderCircle>(e);
                  r.emplace<XPOrb>(e);
              })
+    , magnetOrbs(registry,
+             static_cast<std::size_t>(config.magnet.poolCapacity),
+             [](entt::registry& r, entt::entity e) {
+                 r.emplace<Position>(e);
+                 r.emplace<Velocity>(e);
+                 r.emplace<RenderCircle>(e);
+                 r.emplace<Lifetime>(e);
+                 r.emplace<MagnetOrb>(e);
+             })
     , enemySpatial(64.0f)
 {
     lightningBolts.reserve(64);
@@ -66,6 +75,11 @@ void World::reset() {
     registry.view<XPOrbTag>(entt::exclude<Inactive>).each(
         [&](auto e) { toRelease.push_back(e); });
     for (auto e : toRelease) xpOrbs.release(e);
+
+    toRelease.clear();
+    registry.view<MagnetOrbTag>(entt::exclude<Inactive>).each(
+        [&](auto e) { toRelease.push_back(e); });
+    for (auto e : toRelease) magnetOrbs.release(e);
 
     if (auto pe = findPlayer(registry); pe != entt::null) {
         registry.destroy(pe);

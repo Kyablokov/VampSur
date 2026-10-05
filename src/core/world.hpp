@@ -25,6 +25,8 @@ struct World {
     EntityPool<EnemyTag>      enemies;
     EntityPool<ProjectileTag> projectiles;
     EntityPool<XPOrbTag>      xpOrbs;
+    EntityPool<MagnetOrbTag> magnetOrbs;
+
 
     SpatialHash enemySpatial;
 

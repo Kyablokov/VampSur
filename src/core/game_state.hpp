@@ -46,6 +46,7 @@ struct GameState {
     uint64_t rngState    = 0x9E3779B97F4A7C15ull;
     float bossTimer = 60.0f;   // обратный отсчёт до следующего босса
     RunStats stats;
+    float magnetTimer = 0.0f;   // >0 — все XP-орбы летят к игроку
 
     // Флаг: результат текущего прогона уже записан в save.json
     bool runSaved = false;

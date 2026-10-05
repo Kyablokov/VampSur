@@ -35,4 +35,8 @@ void renderCircles    (entt::registry& r);
 
 void spawnBosses    (World& w, float dt);
 void renderBossHP   (World& w);
+
+void updateMagnets   (World& w, float dt);
+void resolveMagnetPickup(World& w);
+void renderMagnets   (World& w);
 }

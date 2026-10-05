@@ -81,4 +81,7 @@ struct XPOrbTag      {};
 
 struct Inactive {};
 struct BossTag {};
+
+struct MagnetOrbTag {};
+struct MagnetOrb    { float pullDuration = 4.0f; };
 }
