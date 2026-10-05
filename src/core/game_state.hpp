@@ -46,6 +46,7 @@ struct GameState {
     GameMode mode        = GameMode::Playing;
     uint64_t rngState    = 0x9E3779B97F4A7C15ull;
     float bossTimer = 60.0f;   // обратный отсчёт до следующего босса
+    int bossCount = 0;   // сколько боссов заспавнилось за прогон
     RunStats stats;
     float magnetTimer = 0.0f;   // >0 — все XP-орбы летят к игроку
     int  pendingUpgrades = 0;   // сколько апгрейдов осталось предложить

@@ -128,19 +128,31 @@ void spawnBosses(World& w, float dt) {
 
     const float minutes = w.state.timeSeconds / 60.0f;
 
-    EnemyTypeConfig boss;
-    boss.id            = "boss";
-    boss.radius        = w.config.boss.radius;
-    boss.speed         = w.config.boss.speed;
-    boss.color         = w.config.boss.color;
-    boss.hp            = w.config.boss.hp * (1.0f + w.config.boss.hpGrowthPerMinute * (minutes - 1.0f));
-    boss.contactDamage = w.config.boss.contactDamage;
-    boss.xpValue       = w.config.boss.xpValue;
+    // Чередование: нечётный (1, 3, 5...) — melee, чётный (2, 4, 6...) — ranged
+    const bool isRanged = (w.state.bossCount % 2) == 1;
 
-    configureEnemy(w.registry, e, x, y, boss);
-    w.registry.emplace_or_replace<BossTag>(e);
+    if (isRanged) {
+        const float hpScale = 1.0f + w.config.rangedBoss.hpGrowthPerMinute * (minutes - 1.0f);
+        configureRangedBoss(w.registry, e, x, y, w.config.rangedBoss, hpScale);
+        TraceLog(LOG_INFO, "Ranged boss #%d spawned: %.0f HP at t=%.1fs",
+                 w.state.bossCount + 1, w.config.rangedBoss.hp * hpScale, w.state.timeSeconds);
+    } else {
+        EnemyTypeConfig boss;
+        boss.id            = "boss";
+        boss.radius        = w.config.boss.radius;
+        boss.speed         = w.config.boss.speed;
+        boss.color         = w.config.boss.color;
+        boss.hp            = w.config.boss.hp * (1.0f + w.config.boss.hpGrowthPerMinute * (minutes - 1.0f));
+        boss.contactDamage = w.config.boss.contactDamage;
+        boss.xpValue       = w.config.boss.xpValue;
 
-    TraceLog(LOG_INFO, "Boss spawned: %.0f HP at t=%.1fs", boss.hp, w.state.timeSeconds);
+        configureEnemy(w.registry, e, x, y, boss);
+        w.registry.emplace_or_replace<BossTag>(e);
+        TraceLog(LOG_INFO, "Melee boss #%d spawned: %.0f HP at t=%.1fs",
+                 w.state.bossCount + 1, boss.hp, w.state.timeSeconds);
+    }
+
+    w.state.bossCount += 1;
 }
 
 // ---------------------------------------------------------------- AI
@@ -150,7 +162,7 @@ void chasePlayer(World& w, float /*dt*/) {
     if (pe == entt::null) return;
     const auto& ppos = w.registry.get<Position>(pe);
 
-    w.registry.view<EnemyTag, Position, Velocity, Speed>(entt::exclude<Inactive>).each(
+    w.registry.view<EnemyTag, Position, Velocity, Speed>(entt::exclude<Inactive, RangedAttack>).each(
         [&](auto, const Position& pos, Velocity& vel, const Speed& speed) {
             const float dx = ppos.x - pos.x;
             const float dy = ppos.y - pos.y;
@@ -592,6 +604,134 @@ void updateLightning(World& w, float dt) {
 
     // Дроп XP и освобождение
     for (auto e : killed) killEnemy(w, e);
+}
+
+
+// ---------------------------------------------------------------- ranged boss
+
+void updateRangedBosses(World& w, float dt) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    const auto& ppos = w.registry.get<Position>(pe);
+
+    w.registry.view<RangedAttack, Position, Velocity, Speed, Health>(
+        entt::exclude<Inactive>).each(
+        [&](auto e, RangedAttack& atk, const Position& pos,
+            Velocity& vel, const Speed& speed, Health& hp) {
+            if (hp.current <= 0.0f) return;
+
+            const float dx = ppos.x - pos.x;
+            const float dy = ppos.y - pos.y;
+            const float len2 = dx * dx + dy * dy;
+            const float len = std::sqrt(len2);
+            if (len < 1e-3f) { vel.x = vel.y = 0.0f; return; }
+
+            // --- Движение: держим дистанцию ---
+            if (len > atk.keepDistance) {
+                // Слишком далеко — идём к игроку
+                vel.x = dx / len * speed.value;
+                vel.y = dy / len * speed.value;
+            } else if (len < atk.minDistance) {
+                // Слишком близко — отходим
+                vel.x = -dx / len * speed.value;
+                vel.y = -dy / len * speed.value;
+            } else {
+                // В зоне комфорта — стоим
+                vel.x = vel.y = 0.0f;
+            }
+
+            // --- Атака ---
+            atk.timer -= dt;
+            if (atk.timer > 0.0f) return;
+            atk.timer = atk.cooldown;
+
+            // Стреляем в игрока (направление = нормализованный вектор к игроку)
+            const float ax = dx / len;
+            const float ay = dy / len;
+
+            const auto proj = w.enemyProjectiles.acquire();
+            if (proj == entt::null) return;
+
+            configureEnemyProjectile(w.registry, proj,
+                                     pos.x, pos.y,
+                                     ax * atk.projectileSpeed,
+                                     ay * atk.projectileSpeed,
+                                     atk);
+
+            w.audio.play("shoot", 0.7f + randRange(w.state.rngState, 0.0f, 0.1f));
+        });
+}
+
+void updateEnemyProjectiles(World& w, float dt) {
+    std::vector<entt::entity> expired;
+    w.registry.view<EnemyProjectileTag, Lifetime>(entt::exclude<Inactive>).each(
+        [&](auto e, Lifetime& lt) {
+            lt.remaining -= dt;
+            if (lt.remaining <= 0.0f) expired.push_back(e);
+        });
+    for (auto e : expired) w.enemyProjectiles.release(e);
+}
+
+void resolveEnemyProjectileHits(World& w) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    if (!w.registry.all_of<Position, Health, RenderCircle>(pe)) return;
+
+    const bool isInvuln =
+        w.registry.all_of<Invulnerability>(pe) &&
+        w.registry.get<Invulnerability>(pe).remaining > 0.0f;
+    if (isInvuln) return;
+
+    const auto& ppos = w.registry.get<Position>(pe);
+    const auto& prc  = w.registry.get<RenderCircle>(pe);
+
+    entt::entity hitProj = entt::null;
+    float damage = 0.0f;
+
+    w.registry.view<EnemyProjectileTag, Position, RenderCircle, EnemyProjectile>(
+        entt::exclude<Inactive>).each(
+        [&](auto e, const Position& pos, const RenderCircle& rc, const EnemyProjectile& p) {
+            if (hitProj != entt::null) return;
+            const float dx = pos.x - ppos.x;
+            const float dy = pos.y - ppos.y;
+            const float r  = prc.radius + rc.radius;
+            if (dx * dx + dy * dy <= r * r) {
+                hitProj = e;
+                damage  = p.damage;
+            }
+        });
+
+    if (hitProj == entt::null) return;
+
+    w.enemyProjectiles.release(hitProj);
+
+    // Эффекты
+    w.particles.spawnBurst({ ppos.x, ppos.y }, 12,
+                           80.0f, 260.0f,
+                           5.0f, 0.0f,
+                           Color{ 120, 200, 255, 255 }, { 120, 200, 255, 0 },
+                           0.4f, 6.0f, w.state.rngState);
+    addShake(w, w.config.effects.shakeOnHit, 0.18f);
+    w.audio.play("player_hit");
+
+    auto& hp = w.registry.get<Health>(pe);
+    hp.current -= damage;
+    w.state.stats.damageTaken += damage;
+    w.registry.emplace_or_replace<Invulnerability>(pe, w.config.combat.playerInvulnTime);
+
+    if (hp.current <= 0.0f) {
+        hp.current = 0.0f;
+        w.state.mode = GameMode::GameOver;
+    }
+}
+
+void renderEnemyProjectiles(World& w) {
+    w.registry.view<EnemyProjectileTag, Position, RenderCircle>(
+        entt::exclude<Inactive>).each(
+        [&](auto, const Position& pos, const RenderCircle& rc) {
+            DrawCircleV({ pos.x, pos.y }, rc.radius * 2.0f, Fade(rc.color, 0.2f));
+            DrawCircleV({ pos.x, pos.y }, rc.radius, rc.color);
+        });
 }
 
 // ---------------------------------------------------------------- XP

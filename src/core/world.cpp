@@ -63,6 +63,15 @@ World::World(GameConfig cfg)
              r.emplace<RenderCircle>(e);
              r.emplace<Chest>(e);
          })
+    , enemyProjectiles(registry,                   
+        static_cast<std::size_t>(config.rangedBoss.poolCapacity),
+                [](entt::registry& r, entt::entity e) {
+                    r.emplace<Position>(e);
+                    r.emplace<Velocity>(e);
+                    r.emplace<RenderCircle>(e);
+                    r.emplace<Lifetime>(e);
+                    r.emplace<EnemyProjectile>(e);
+        })
     , enemySpatial(64.0f)
 {
     particles.reserve(static_cast<std::size_t>(config.effects.particlePool));
@@ -109,6 +118,11 @@ void World::reset() {
     registry.view<ChestTag>(entt::exclude<Inactive>).each(
         [&](auto e) { toRelease.push_back(e); });
     for (auto e : toRelease) chests.release(e);
+
+    toRelease.clear();
+    registry.view<EnemyProjectileTag>(entt::exclude<Inactive>).each(
+        [&](auto e) { toRelease.push_back(e); });
+    for (auto e : toRelease) enemyProjectiles.release(e);
 
     if (auto pe = findPlayer(registry); pe != entt::null) {
         registry.destroy(pe);

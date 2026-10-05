@@ -43,14 +43,32 @@
     "base_requirement": 5, "requirement_growth": 4
   },
   "boss": {
-  "interval": 60.0,
-  "radius": 34.0,
-  "speed": 45.0,
-  "color": [255, 40, 100, 255],
-  "hp": 800.0,
-  "contact_damage": 25.0,
-  "xp_value": 50.0,
-  "hp_growth_per_minute": 0.5
+    "interval": 60.0,
+    "radius": 34.0,
+    "speed": 45.0,
+    "color": [255, 40, 100, 255],
+    "hp": 800.0,
+    "contact_damage": 25.0,
+    "xp_value": 50.0,
+    "hp_growth_per_minute": 0.5
+  },
+  "ranged_boss": {
+    "radius": 30.0,
+    "speed": 70.0,
+    "color": [80, 180, 255, 255],
+    "hp": 600.0,
+    "contact_damage": 15.0,
+    "xp_value": 50.0,
+    "hp_growth_per_minute": 0.5,
+    "keep_distance": 380.0,
+    "min_distance": 220.0,
+    "attack_cooldown": 1.8,
+    "projectile_speed": 340.0,
+    "projectile_damage": 12.0,
+    "projectile_lifetime": 3.0,
+    "projectile_radius": 7.0,
+    "projectile_color": [120, 200, 255, 255],
+    "pool_capacity": 64
   },
   "difficulty": {
     "enemy_hp_growth_per_minute": 0.33,

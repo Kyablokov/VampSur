@@ -57,4 +57,9 @@ void killEnemy(World& w, entt::entity e);
 void updateChests  (World& w, float dt);
 void resolveChestPickup(World& w);
 void renderChests  (World& w);
+
+void updateRangedBosses         (World& w, float dt);
+void updateEnemyProjectiles     (World& w, float dt);
+void resolveEnemyProjectileHits (World& w);
+void renderEnemyProjectiles     (World& w);
 }

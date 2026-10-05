@@ -86,7 +86,48 @@ inline void configureEnemy(entt::registry& r, entt::entity e,
     r.replace<XPValue>      (e, cfg.xpValue);
     r.replace<OrbitHitCooldown>(e, 0.0f);
     r.remove<BossTag>(e);   // на случай, если сущность была боссом в прошлой жизни
+    r.remove<RangedAttack>(e);   // если был — убираем
 }
+
+
+inline void configureRangedBoss(entt::registry& r, entt::entity e,
+                                float x, float y,
+                                const RangedBossConfig& cfg,
+                                float hpScale) {
+    r.replace<Position>     (e, x, y);
+    r.replace<Velocity>     (e, 0.0f, 0.0f);
+    r.replace<Speed>        (e, cfg.speed);
+    r.replace<RenderCircle> (e, cfg.radius, cfg.color);
+    r.replace<Health>       (e, cfg.hp * hpScale, cfg.hp * hpScale);
+    r.replace<ContactDamage>(e, cfg.contactDamage);
+    r.replace<XPValue>      (e, cfg.xpValue);
+    r.replace<OrbitHitCooldown>(e, 0.0f);
+
+    RangedAttack attack;
+    attack.cooldown           = cfg.attackCooldown;
+    attack.timer              = 0.0f;
+    attack.keepDistance       = cfg.keepDistance;
+    attack.minDistance        = cfg.minDistance;
+    attack.projectileSpeed    = cfg.projectileSpeed;
+    attack.projectileDamage   = cfg.projectileDamage;
+    attack.projectileLifetime = cfg.projectileLifetime;
+    attack.projectileRadius   = cfg.projectileRadius;
+    attack.projectileColor    = cfg.projectileColor;
+    r.emplace_or_replace<RangedAttack>(e, attack);
+    // BossTag + RangedAttack = ranged boss
+    r.emplace_or_replace<BossTag>(e);
+}
+
+inline void configureEnemyProjectile(entt::registry& r, entt::entity e,
+                                     float x, float y, float vx, float vy,
+                                     const RangedAttack& attack) {
+    r.replace<Position>     (e, x, y);
+    r.replace<Velocity>     (e, vx, vy);
+    r.replace<RenderCircle> (e, attack.projectileRadius, attack.projectileColor);
+    r.replace<Lifetime>     (e, attack.projectileLifetime);
+    r.replace<EnemyProjectile>(e, attack.projectileDamage);
+}
+
 
 inline void configureChest(entt::registry& r, entt::entity e,
                            float x, float y, const ChestConfig& cfg) {

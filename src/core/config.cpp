@@ -269,6 +269,25 @@ GameConfig loadGameConfig(const std::string& path) {
         config.chest.poolCapacity     = c.value("pool_capacity",      config.chest.poolCapacity);
         if (c.contains("color")) config.chest.color = parseColor(c["color"], config.chest.color);
     }
+    if (j.contains("ranged_boss")) {
+        const auto& r = j["ranged_boss"];
+        config.rangedBoss.radius             = r.value("radius",               config.rangedBoss.radius);
+        config.rangedBoss.speed              = r.value("speed",                config.rangedBoss.speed);
+        config.rangedBoss.hp                 = r.value("hp",                   config.rangedBoss.hp);
+        config.rangedBoss.contactDamage      = r.value("contact_damage",       config.rangedBoss.contactDamage);
+        config.rangedBoss.xpValue            = r.value("xp_value",             config.rangedBoss.xpValue);
+        config.rangedBoss.hpGrowthPerMinute  = r.value("hp_growth_per_minute", config.rangedBoss.hpGrowthPerMinute);
+        config.rangedBoss.keepDistance       = r.value("keep_distance",        config.rangedBoss.keepDistance);
+        config.rangedBoss.minDistance        = r.value("min_distance",         config.rangedBoss.minDistance);
+        config.rangedBoss.attackCooldown     = r.value("attack_cooldown",      config.rangedBoss.attackCooldown);
+        config.rangedBoss.projectileSpeed    = r.value("projectile_speed",     config.rangedBoss.projectileSpeed);
+        config.rangedBoss.projectileDamage   = r.value("projectile_damage",    config.rangedBoss.projectileDamage);
+        config.rangedBoss.projectileLifetime = r.value("projectile_lifetime",  config.rangedBoss.projectileLifetime);
+        config.rangedBoss.projectileRadius   = r.value("projectile_radius",    config.rangedBoss.projectileRadius);
+        config.rangedBoss.poolCapacity       = r.value("pool_capacity",        config.rangedBoss.poolCapacity);
+        if (r.contains("color"))            config.rangedBoss.color           = parseColor(r["color"],            config.rangedBoss.color);
+        if (r.contains("projectile_color")) config.rangedBoss.projectileColor = parseColor(r["projectile_color"], config.rangedBoss.projectileColor);
+    }
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
@@ -394,7 +413,19 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "color",              colorToJson(c.chest.color) },
         { "pool_capacity",      c.chest.poolCapacity },
     };
-
+    j["ranged_boss"] = {
+        { "radius", c.rangedBoss.radius }, { "speed", c.rangedBoss.speed }, { "color", colorToJson(c.rangedBoss.color) },
+        { "hp", c.rangedBoss.hp }, { "contact_damage", c.rangedBoss.contactDamage },
+        { "xp_value", c.rangedBoss.xpValue }, { "hp_growth_per_minute", c.rangedBoss.hpGrowthPerMinute },
+        { "keep_distance", c.rangedBoss.keepDistance }, { "min_distance", c.rangedBoss.minDistance },
+        { "attack_cooldown", c.rangedBoss.attackCooldown },
+        { "projectile_speed", c.rangedBoss.projectileSpeed },
+        { "projectile_damage", c.rangedBoss.projectileDamage },
+        { "projectile_lifetime", c.rangedBoss.projectileLifetime },
+        { "projectile_radius", c.rangedBoss.projectileRadius },
+        { "projectile_color", colorToJson(c.rangedBoss.projectileColor) },
+        { "pool_capacity", c.rangedBoss.poolCapacity },
+    };
     std::ofstream out(path);
 
     if (!out.is_open()) { TraceLog(LOG_ERROR, "Cannot write config to '%s'", path.c_str()); return; }

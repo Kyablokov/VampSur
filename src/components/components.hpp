@@ -92,6 +92,22 @@ struct XPOrbTag      {};
 
 struct Inactive {};
 struct BossTag {};
+struct RangedAttack {
+    float cooldown         = 1.8f;
+    float timer            = 0.0f;
+    float keepDistance     = 380.0f;
+    float minDistance      = 220.0f;
+    float projectileSpeed  = 340.0f;
+    float projectileDamage = 12.0f;
+    float projectileLifetime = 3.0f;
+    float projectileRadius = 7.0f;
+    Color projectileColor  = {120, 200, 255, 255};
+};
+
+struct EnemyProjectileTag {};
+struct EnemyProjectile {
+    float damage = 12.0f;
+};
 
 struct MagnetOrbTag {};
 struct MagnetOrb    { float pullDuration = 4.0f; };

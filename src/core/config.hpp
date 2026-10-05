@@ -92,6 +92,24 @@ struct BossConfig {
     float hpGrowthPerMinute   = 0.5f;
 };
 
+struct RangedBossConfig {
+    float radius              = 30.0f;
+    float speed               = 70.0f;
+    Color color               = {80, 180, 255, 255};
+    float hp                  = 600.0f;
+    float contactDamage       = 15.0f;
+    float xpValue             = 50.0f;
+    float hpGrowthPerMinute   = 0.5f;
+    float keepDistance        = 380.0f;
+    float minDistance         = 220.0f;
+    float attackCooldown      = 1.8f;
+    float projectileSpeed     = 340.0f;
+    float projectileDamage    = 12.0f;
+    float projectileLifetime  = 3.0f;
+    float projectileRadius    = 7.0f;
+    Color projectileColor     = {120, 200, 255, 255};
+    int   poolCapacity        = 64;
+};
 struct DifficultyConfig {
     float enemyHpGrowthPerMinute      = 0.33f;
     float spawnIntervalDecayPerMinute = 0.05f;
@@ -188,6 +206,8 @@ struct GameConfig {
     AudioConfig audio;
     HealOrbConfig healOrb;
     ChestConfig chest;
+    RangedBossConfig rangedBoss;
+
 
 };
 

@@ -160,6 +160,12 @@ void drawHUD(const World& w) {
              10, 140, 16, ORANGE);
     DrawText(TextFormat("Particles: %zu / %zu", w.particles.activeCount(), w.particles.capacity()),
              10, 158, 16, ORANGE);
+    DrawText(TextFormat("Heal orbs: %zu / %zu", w.healOrbs.active(), w.healOrbs.capacity()),
+         10, 176, 16, ORANGE);
+    DrawText(TextFormat("Enemy bullets: %zu / %zu",
+                    w.enemyProjectiles.active(), w.enemyProjectiles.capacity()),
+         10, 176, 16, ORANGE);
+
 
     auto pv = w.registry.view<PlayerTag, Health>();
     if (pv.begin() != pv.end()) {
@@ -175,8 +181,7 @@ void drawHUD(const World& w) {
         DrawText(TextFormat("MAGNET: %.1fs", w.state.magnetTimer),
                  10, 236, 18, Color{ 255, 100, 200, 255 });
     }
-    DrawText(TextFormat("Heal orbs: %zu / %zu", w.healOrbs.active(), w.healOrbs.capacity()),
-         10, 176, 16, ORANGE);
+
 
     DrawText("[ESC] pause", 10, 260, 16, Color{ 140, 150, 170, 255 });
 }
@@ -480,6 +485,8 @@ int main() {
                 updateMagnets    (world, dt);
                 updateHealOrbs(world, dt);
                 updateChests(world, dt);       // после updateHealOrbs
+                updateRangedBosses(world, dt);
+                updateEnemyProjectiles(world, dt);
                 updateMovement   (world, dt);
 
                 rebuildSpatial   (world);
@@ -495,6 +502,7 @@ int main() {
                 resolveMagnetPickup  (world);
                 resolveHealPickup(world);
                 resolveChestPickup(world);     // после resolveHealPickup
+                resolveEnemyProjectileHits(world);
                 checkLevelUp         (world);
 
                 // Эффекты (шаг 12)
@@ -597,6 +605,7 @@ int main() {
                 renderChests(world);
                 renderBossHP(world);
                 renderLightning(world);
+                renderEnemyProjectiles(world);
                 world.particles.render();        // ← частицы
                 world.damageNumbers.render();    // ← цифры урона (поверх всего)
             EndMode2D();
