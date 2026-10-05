@@ -8,6 +8,7 @@
 #include "components/components.hpp"
 #include "core/factory.hpp"
 #include "core/upgrades.hpp"
+#include "core/particles.hpp"
 
 namespace vk {
 
@@ -222,6 +223,13 @@ void updateWeapons(World& w, float dt) {
                             ay * weapon.projectileSpeed,
                             weapon);
     }
+    w.particles.spawnBurst({ ppos.x, ppos.y }, w.config.effects.muzzleParticles,
+                        80.0f, 220.0f,
+                        4.0f, 0.0f,
+                        YELLOW, { 255, 100, 50, 0 },
+                        0.15f, 8.0f, w.state.rngState);
+
+    addShake(w, w.config.effects.shakeOnShoot, 0.08f);
 }
 
 // ---------------------------------------------------------------- projectiles
@@ -244,8 +252,26 @@ void killEnemy(World& w, entt::entity e) {
 
     w.state.stats.kills += 1;
 
-    const auto& pos   = w.registry.get<Position>(e);
+    const auto& pos = w.registry.get<Position>(e);
+    const auto& rc  = w.registry.get<RenderCircle>(e);
     const float value = w.registry.get<XPValue>(e).value;
+
+    // Взрыв смерти
+    w.particles.spawnBurst({ pos.x, pos.y }, w.config.effects.deathParticles,
+                           80.0f, 280.0f,
+                           5.0f, 0.0f,
+                           rc.color, { 255, 100, 100, 0 },
+                           0.5f, 4.0f, w.state.rngState);
+
+    // Дополнительная вспышка и тряска для босса
+    if (w.registry.all_of<BossTag>(e)) {
+        w.particles.spawnBurst({ pos.x, pos.y }, 60,
+                               100.0f, 420.0f,
+                               8.0f, 0.0f,
+                               YELLOW, { 255, 100, 100, 0 },
+                               0.7f, 2.0f, w.state.rngState);
+        addShake(w, w.config.effects.shakeOnBossDeath, 0.35f);
+    }
 
     if (auto orb = w.xpOrbs.acquire(); orb != entt::null) {
         configureXPOrb(w.registry, orb, pos.x, pos.y, value, w.config.xp);
@@ -282,6 +308,21 @@ void resolveProjectileHits(World& w) {
 
                 auto& hp = w.registry.get<Health>(e);
                 hp.current -= dmg.value;
+
+                // Эффекты попадания
+                w.particles.spawnBurst({ ep.x, ep.y }, w.config.effects.hitParticles,
+                                    60.0f, 200.0f,
+                                    3.0f, 0.0f,
+                                    prc.color, { 255, 255, 255, 0 },
+                                    0.25f, 8.0f, w.state.rngState);
+
+                w.damageNumbers.spawn({ ep.x, ep.y - erc.radius - 6.0f },
+                                    dmg.value,
+                                    Color{ 255, 240, 180, 255 },
+                                    w.config.effects.damageNumbersLifetime);
+
+                applyHit(w, e);
+
                 if (hp.current <= 0.0f) killedEnemies.push_back(e);
 
                 hitProjectiles.push_back(proj);
@@ -290,7 +331,7 @@ void resolveProjectileHits(World& w) {
         });
 
     for (auto e : killedEnemies) killEnemy(w, e);
-    
+
     for (auto p : hitProjectiles) w.projectiles.release(p);
 }
 
@@ -329,6 +370,13 @@ void resolveContactDamage(World& w, float dt) {
     if (hitEnemy == entt::null) return;
 
     w.enemies.release(hitEnemy);
+    
+    w.particles.spawnBurst({ ppos.x, ppos.y }, 10,
+                        80.0f, 260.0f,
+                        5.0f, 0.0f,
+                        RED, { 200, 50, 50, 0 },
+                        0.4f, 6.0f, w.state.rngState);
+    addShake(w, w.config.effects.shakeOnHit, 0.18f);
 
     auto& hp = w.registry.get<Health>(pe);
     w.state.stats.damageTaken += damage;
@@ -365,6 +413,7 @@ void updateAura(World& w, float dt) {
             if (dx * dx + dy * dy > r * r) return;
 
             hp.current -= aura.damage;
+            applyHit(w, e);
             if (hp.current <= 0.0f) killed.push_back(e);
         });
 
@@ -436,6 +485,7 @@ void resolveOrbitHits(World& w, float dt) {
                 if (dx * dx + dy * dy > r * r) continue;
 
                 hp.current -= orbit.damage;
+                applyHit(w, e);
                 cd.remaining = orbit.hitCooldown;
                 if (hp.current <= 0.0f) killed.push_back(e);
                 return;
@@ -509,6 +559,7 @@ void updateLightning(World& w, float dt) {
         if (w.registry.all_of<Health>(best)) {
             auto& hp = w.registry.get<Health>(best);
             hp.current -= lightning.damage;
+            applyHit(w, best);
             if (hp.current <= 0.0f) killed.push_back(best);
         }
 
@@ -689,10 +740,53 @@ void renderMagnets(World& w) {
         });
 }
 
+// ---------------------------------------------------------------- effects
+
+void updateHitFlashes(World& w, float dt) {
+    w.registry.view<HitFlash>().each(
+        [&](auto, HitFlash& hf) {
+            if (hf.remaining > 0.0f) hf.remaining -= dt;
+        });
+}
+
+void updateScreenShake(World& w, float dt) {
+    w.registry.view<ScreenShake>().each(
+        [&](auto, ScreenShake& s) {
+            if (s.remaining > 0.0f) s.remaining -= dt;
+        });
+}
+
+void addShake(World& w, float intensity, float duration) {
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    auto& s = w.registry.get_or_emplace<ScreenShake>(pe);
+    // Не перебиваем уже идущую более сильную тряску
+    if (s.remaining <= 0.0f || s.intensity < intensity) {
+        s.intensity = intensity;
+        s.maxTime   = duration;
+        s.remaining = duration;
+    }
+}
+
+void applyHit(World& w, entt::entity enemy) {
+    if (!w.registry.valid(enemy)) return;
+    auto& hf = w.registry.get_or_emplace<HitFlash>(enemy);
+    hf.remaining = w.config.effects.hitFlashDuration;
+    hf.maxTime   = w.config.effects.hitFlashDuration;
+}
+
 void renderCircles(entt::registry& r) {
     r.view<Position, RenderCircle>(entt::exclude<Inactive>).each(
-        [&](auto, const Position& pos, const RenderCircle& rc) {
-            DrawCircleV({ pos.x, pos.y }, rc.radius, rc.color);
+        [&](auto e, const Position& pos, const RenderCircle& rc) {
+            Color c = rc.color;
+            if (r.all_of<HitFlash>(e)) {
+                const auto& hf = r.get<HitFlash>(e);
+                if (hf.remaining > 0.0f && hf.maxTime > 0.0f) {
+                    const float t = hf.remaining / hf.maxTime;
+                    c = lerpColor(rc.color, WHITE, t);
+                }
+            }
+            DrawCircleV({ pos.x, pos.y }, rc.radius, c);
         });
 }
 

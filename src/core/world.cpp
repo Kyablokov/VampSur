@@ -49,8 +49,11 @@ World::World(GameConfig cfg)
              })
     , enemySpatial(64.0f)
 {
+    particles.reserve(static_cast<std::size_t>(config.effects.particlePool));
+    damageNumbers.reserve(static_cast<std::size_t>(config.effects.damageNumbersPool));
     lightningBolts.reserve(64);
     saveData = loadSaveFile();
+    
 }
 
 void World::spawnPlayer() {
@@ -88,6 +91,8 @@ void World::reset() {
 
     enemySpatial.clear();
     lightningBolts.clear();
+    particles.clear();
+    damageNumbers.clear();
     state = GameState{};
 }
 

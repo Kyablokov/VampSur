@@ -47,6 +47,7 @@ add_executable(vampire_like
     src/core/world.cpp
     src/core/upgrades.cpp
     src/core/save.cpp
+    src/core/particles.cpp       # ← добавить
     src/systems/systems.cpp
 )
 

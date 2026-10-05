@@ -7,6 +7,7 @@
 #include "components/components.hpp"
 #include "core/config.hpp"
 #include "core/game_state.hpp"
+#include "core/particles.hpp"
 #include "core/upgrades.hpp"
 #include "core/world.hpp"
 #include "systems/systems.hpp"
@@ -156,23 +157,25 @@ void drawHUD(const World& w) {
              10, 122, 16, ORANGE);
     DrawText(TextFormat("XP orbs: %zu / %zu", w.xpOrbs.active(), w.xpOrbs.capacity()),
              10, 140, 16, ORANGE);
+    DrawText(TextFormat("Particles: %zu / %zu", w.particles.activeCount(), w.particles.capacity()),
+             10, 158, 16, ORANGE);
 
     auto pv = w.registry.view<PlayerTag, Health>();
     if (pv.begin() != pv.end()) {
         const auto& hp = pv.get<Health>(*pv.begin());
         const float frac = (hp.max > 0.0f) ? (hp.current / hp.max) : 0.0f;
-        DrawRectangle(10, 166, 202, 22, Fade(BLACK, 0.6f));
-        DrawRectangle(11, 167, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
+        DrawRectangle(10, 184, 202, 22, Fade(BLACK, 0.6f));
+        DrawRectangle(11, 185, static_cast<int>(200 * frac), 20, Fade(RED, 0.9f));
         DrawText(TextFormat("HP %.0f / %.0f", hp.current, hp.max),
-                 16, 170, 16, RAYWHITE);
+                 16, 188, 16, RAYWHITE);
     }
 
     if (w.state.magnetTimer > 0.0f) {
         DrawText(TextFormat("MAGNET: %.1fs", w.state.magnetTimer),
-                 10, 200, 18, Color{ 255, 100, 200, 255 });
+                 10, 218, 18, Color{ 255, 100, 200, 255 });
     }
 
-    DrawText("[ESC] pause", 10, 224, 16, Color{ 140, 150, 170, 255 });
+    DrawText("[ESC] pause", 10, 242, 16, Color{ 140, 150, 170, 255 });
 }
 
 // ---------------------------------------------------------------- upgrade cards
@@ -303,7 +306,6 @@ void drawDeathScreen(const World& w) {
 
     const auto& sd = w.saveData;
 
-    // formatTime и TextFormat используют ring-буфер raylib — не более 4 вызовов подряд
     const std::string timeRun  = formatTime(sd.lastTime);
     const std::string timeBest = formatTime(sd.bestTime);
     row("Time",  timeRun.c_str(), timeBest.c_str(), sd.newBestTime);
@@ -349,7 +351,6 @@ void drawMainMenu(const World& w) {
     const char* sub = "survive as long as you can";
     DrawText(sub, sw/2 - MeasureText(sub, 22)/2, 150, 22, Color{ 140, 150, 170, 255 });
 
-    // Рекорды
     int y = 220;
     DrawText("BEST RUNS", sw/2 - 100, y, 22, GOLD);
     y += 40;
@@ -361,7 +362,6 @@ void drawMainMenu(const World& w) {
     DrawText(TextFormat("Total runs: %d", w.saveData.totalRuns), sw/2 - 100, y, 18,
              Color{ 160, 170, 190, 255 });
 
-    // Кнопки
     const Rectangle playBtn  = playButtonRect(sw, sh);
     const Rectangle resetBtn = resetButtonRect(sw, sh);
     const Vector2 mouse = GetMousePosition();
@@ -392,7 +392,6 @@ void drawMainMenu(const World& w) {
              sh - 60, 18, Color{ 140, 150, 170, 255 });
 }
 
-// Обработка ввода в главном меню. Возвращает true, если нужно стартовать игру.
 bool handleMainMenuInput(World& w) {
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
         return true;
@@ -441,12 +440,12 @@ int main() {
         const float dt = GetFrameTime();
 
         // ----------------------------------------------------------------
-        // Обновление логики
+        // Логика
         // ----------------------------------------------------------------
         switch (world.state.mode) {
             case GameMode::MainMenu: {
                 if (handleMainMenuInput(world)) {
-                    world.reset();               // обнуляет state, остаётся mode=Playing
+                    world.reset();
                 }
                 break;
             }
@@ -474,6 +473,12 @@ int main() {
                 resolveXPPickup      (world);
                 resolveMagnetPickup  (world);
                 checkLevelUp         (world);
+
+                // Эффекты (шаг 12)
+                world.particles.update(dt);
+                world.damageNumbers.update(dt);
+                updateHitFlashes (world, dt);
+                updateScreenShake(world, dt);
 
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
                     world.state.mode = GameMode::Paused;
@@ -509,7 +514,7 @@ int main() {
         }
 
         // ----------------------------------------------------------------
-        // Камера (только вне меню)
+        // Камера + Screen shake
         // ----------------------------------------------------------------
         float playerX = 0.0f, playerY = 0.0f;
         if (world.state.mode != GameMode::MainMenu) {
@@ -518,6 +523,26 @@ int main() {
                     playerX = pos.x; playerY = pos.y;
                     camera.target = { pos.x, pos.y };
                 });
+
+            const float baseOffX = static_cast<float>(config.window.width)  / 2.0f;
+            const float baseOffY = static_cast<float>(config.window.height) / 2.0f;
+
+            float shakeMag = 0.0f;
+            world.registry.view<ScreenShake>().each(
+                [&](auto, const ScreenShake& s) {
+                    if (s.remaining > 0.0f && s.maxTime > 0.0f) {
+                        const float t = s.remaining / s.maxTime;
+                        shakeMag = s.intensity * t;
+                    }
+                });
+
+            if (shakeMag > 0.01f) {
+                camera.offset.x = baseOffX + randRange(world.state.rngState, -shakeMag, shakeMag);
+                camera.offset.y = baseOffY + randRange(world.state.rngState, -shakeMag, shakeMag);
+            } else {
+                camera.offset.x = baseOffX;
+                camera.offset.y = baseOffY;
+            }
         }
 
         // ----------------------------------------------------------------
@@ -539,10 +564,12 @@ int main() {
                 renderMagnets(world);
                 renderBossHP(world);
                 renderLightning(world);
+                world.particles.render();        // ← частицы
+                world.damageNumbers.render();    // ← цифры урона (поверх всего)
             EndMode2D();
 
             DrawFPS(10, 10);
-            DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 250, 16, LIME);
+            DrawText(TextFormat("pos: %.1f, %.1f", playerX, playerY), 10, 268, 16, LIME);
             drawXPBar(world);
             drawHUD(world);
             drawUpgradeHUD(world);

@@ -113,7 +113,7 @@ struct SpawnerConfig {
 };
 
 struct CombatConfig {
-    float playerHp         = 100.0f;
+    float playerHp         = 70.0f;
     float playerInvulnTime = 0.6f;
 };
 
@@ -133,6 +133,19 @@ struct UpgradeConfig {
     float       effectValue = 0.0f;
 };
 
+struct EffectsConfig {
+    int   hitParticles          = 4;
+    int   deathParticles        = 12;
+    int   muzzleParticles       = 3;
+    int   particlePool          = 1024;
+    float particleDrag          = 6.0f;
+    int   damageNumbersPool     = 64;
+    float damageNumbersLifetime = 0.7f;
+    float shakeOnShoot          = 1.5f;
+    float shakeOnHit            = 5.0f;
+    float shakeOnBossDeath      = 14.0f;
+    float hitFlashDuration      = 0.08f;
+};
 struct GameConfig {
     WindowConfig                 window;
     PlayerConfig                 player;
@@ -149,6 +162,7 @@ struct GameConfig {
     BossConfig       boss;
     DifficultyConfig difficulty;
     MagnetConfig magnet;
+    EffectsConfig effects;
 };
 
 

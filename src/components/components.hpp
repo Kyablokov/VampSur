@@ -61,6 +61,17 @@ struct LightningWeapon {
 
 struct OrbitHitCooldown { float remaining = 0.0f; };
 
+struct HitFlash {
+    float remaining = 0.0f;
+    float maxTime   = 0.08f;
+};
+
+struct ScreenShake {
+    float remaining = 0.0f;
+    float maxTime   = 0.15f;
+    float intensity = 0.0f;   // пиковое смещение камеры в пикселях
+};
+
 // Визуальный эффект — не ECS-компонент, лежит в World::lightningBolts
 struct LightningBolt {
     Vector2 from       = {};

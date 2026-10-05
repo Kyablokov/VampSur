@@ -23,6 +23,8 @@ inline entt::entity createPlayer(entt::registry& registry,
     registry.emplace<Health>       (e, ccfg.playerHp, ccfg.playerHp);
     registry.emplace<PickupRadius> (e, pcfg.pickupRadius);
     registry.emplace<PlayerTag>    (e);
+    registry.emplace<ScreenShake>(e);
+
 
     XP xp;
     xp.level   = 1;

@@ -232,7 +232,20 @@ GameConfig loadGameConfig(const std::string& path) {
         config.magnet.poolCapacity = m.value("pool_capacity", config.magnet.poolCapacity);
         if (m.contains("color")) config.magnet.color = parseColor(m["color"], config.magnet.color);
     }
-
+    if (j.contains("effects")) {
+        const auto& e = j["effects"];
+        config.effects.hitParticles          = e.value("hit_particles",           config.effects.hitParticles);
+        config.effects.deathParticles        = e.value("death_particles",         config.effects.deathParticles);
+        config.effects.muzzleParticles       = e.value("muzzle_particles",        config.effects.muzzleParticles);
+        config.effects.particlePool          = e.value("particle_pool",           config.effects.particlePool);
+        config.effects.particleDrag          = e.value("particle_drag",           config.effects.particleDrag);
+        config.effects.damageNumbersPool     = e.value("damage_numbers_pool",     config.effects.damageNumbersPool);
+        config.effects.damageNumbersLifetime = e.value("damage_numbers_lifetime", config.effects.damageNumbersLifetime);
+        config.effects.shakeOnShoot          = e.value("shake_on_shoot",          config.effects.shakeOnShoot);
+        config.effects.shakeOnHit            = e.value("shake_on_hit",            config.effects.shakeOnHit);
+        config.effects.shakeOnBossDeath      = e.value("shake_on_boss_death",     config.effects.shakeOnBossDeath);
+        config.effects.hitFlashDuration      = e.value("hit_flash_duration",      config.effects.hitFlashDuration);
+    }
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
     TraceLog(LOG_INFO, "Config loaded from '%s'", actualPath.c_str());
@@ -325,9 +338,22 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "lifetime", c.magnet.lifetime }, { "pull_duration", c.magnet.pullDuration },
         { "pool_capacity", c.magnet.poolCapacity },
     };
+    j["effects"] = {
+        { "hit_particles",           c.effects.hitParticles },
+        { "death_particles",         c.effects.deathParticles },
+        { "muzzle_particles",        c.effects.muzzleParticles },
+        { "particle_pool",           c.effects.particlePool },
+        { "particle_drag",           c.effects.particleDrag },
+        { "damage_numbers_pool",     c.effects.damageNumbersPool },
+        { "damage_numbers_lifetime", c.effects.damageNumbersLifetime },
+        { "shake_on_shoot",          c.effects.shakeOnShoot },
+        { "shake_on_hit",            c.effects.shakeOnHit },
+        { "shake_on_boss_death",     c.effects.shakeOnBossDeath },
+        { "hit_flash_duration",      c.effects.hitFlashDuration },
+    };
 
     std::ofstream out(path);
-    
+
     if (!out.is_open()) { TraceLog(LOG_ERROR, "Cannot write config to '%s'", path.c_str()); return; }
     out << j.dump(2) << std::endl;
 }

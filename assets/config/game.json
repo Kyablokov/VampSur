@@ -65,6 +65,19 @@
     "pool_capacity": 16
   },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
-  "combat":  { "player_hp": 100.0, "player_invuln_time": 0.6 },
+  "combat":  { "player_hp": 70.0, "player_invuln_time": 0.6 },
+  "effects": {
+    "hit_particles": 4,
+    "death_particles": 12,
+    "muzzle_particles": 3,
+    "particle_pool": 1024,
+    "particle_drag": 6.0,
+    "damage_numbers_pool": 64,
+    "damage_numbers_lifetime": 0.7,
+    "shake_on_shoot": 1.5,
+    "shake_on_hit": 5.0,
+    "shake_on_boss_death": 14.0,
+    "hit_flash_duration": 0.08
+  },
   "world":   { "grid_size": 64, "background_color": [18, 18, 24, 255], "grid_color": [55, 55, 75, 255] }
 }

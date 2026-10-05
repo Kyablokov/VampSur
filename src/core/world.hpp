@@ -9,7 +9,7 @@
 #include "core/save.hpp"
 #include "core/spatial_hash.hpp"
 #include "components/components.hpp"
-
+#include "core/particles.hpp"
 namespace vk {
 
 inline entt::entity findPlayer(entt::registry& r) {
@@ -26,11 +26,15 @@ struct World {
     EntityPool<ProjectileTag> projectiles;
     EntityPool<XPOrbTag>      xpOrbs;
     EntityPool<MagnetOrbTag> magnetOrbs;
+    
 
 
     SpatialHash enemySpatial;
 
     std::vector<LightningBolt> lightningBolts;
+
+    ParticleSystem     particles;
+    DamageNumberSystem damageNumbers;
 
     // Рекорды и статистика — живут между reset(), не обнуляются.
     SaveData saveData;
