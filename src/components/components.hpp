@@ -80,5 +80,5 @@ struct ProjectileTag {};
 struct XPOrbTag      {};
 
 struct Inactive {};
-
+struct BossTag {};
 }

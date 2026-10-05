@@ -41,6 +41,21 @@
     "magnet_speed": 480.0, "pool_capacity": 800,
     "base_requirement": 5, "requirement_growth": 4
   },
+  "boss": {
+  "interval": 60.0,
+  "radius": 34.0,
+  "speed": 45.0,
+  "color": [255, 40, 100, 255],
+  "hp": 800.0,
+  "contact_damage": 25.0,
+  "xp_value": 50.0,
+  "hp_growth_per_minute": 0.5
+  },
+  "difficulty": {
+    "enemy_hp_growth_per_minute": 0.33,
+    "spawn_interval_decay_per_minute": 0.05,
+    "spawn_interval_min": 0.15
+  },
   "spawner": { "interval": 0.7, "distance": 700.0, "max_enemies": 500 },
   "combat":  { "player_hp": 100.0, "player_invuln_time": 0.6 },
   "world":   { "grid_size": 64, "background_color": [18, 18, 24, 255], "grid_color": [55, 55, 75, 255] }

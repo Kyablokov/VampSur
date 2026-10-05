@@ -44,7 +44,7 @@ struct GameState {
     float    spawnTimer  = 0.0f;
     GameMode mode        = GameMode::Playing;
     uint64_t rngState    = 0x9E3779B97F4A7C15ull;
-
+    float bossTimer = 60.0f;   // обратный отсчёт до следующего босса
     RunStats stats;
 
     // Флаг: результат текущего прогона уже записан в save.json

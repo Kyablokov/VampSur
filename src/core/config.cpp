@@ -206,6 +206,23 @@ GameConfig loadGameConfig(const std::string& path) {
         if (wd.contains("background_color")) config.world.backgroundColor = parseColor(wd["background_color"], config.world.backgroundColor);
         if (wd.contains("grid_color"))       config.world.gridColor       = parseColor(wd["grid_color"],       config.world.gridColor);
     }
+    if (j.contains("boss")) {
+    const auto& b = j["boss"];
+    config.boss.interval          = b.value("interval",              config.boss.interval);
+    config.boss.radius            = b.value("radius",                config.boss.radius);
+    config.boss.speed             = b.value("speed",                 config.boss.speed);
+    config.boss.hp                = b.value("hp",                    config.boss.hp);
+    config.boss.contactDamage     = b.value("contact_damage",        config.boss.contactDamage);
+    config.boss.xpValue           = b.value("xp_value",              config.boss.xpValue);
+    config.boss.hpGrowthPerMinute = b.value("hp_growth_per_minute",  config.boss.hpGrowthPerMinute);
+    if (b.contains("color")) config.boss.color = parseColor(b["color"], config.boss.color);
+    }
+    if (j.contains("difficulty")) {
+        const auto& d = j["difficulty"];
+        config.difficulty.enemyHpGrowthPerMinute      = d.value("enemy_hp_growth_per_minute",      config.difficulty.enemyHpGrowthPerMinute);
+        config.difficulty.spawnIntervalDecayPerMinute = d.value("spawn_interval_decay_per_minute", config.difficulty.spawnIntervalDecayPerMinute);
+        config.difficulty.spawnIntervalMin            = d.value("spawn_interval_min",              config.difficulty.spawnIntervalMin);
+    }
 
     config.upgrades = loadUpgradesConfig(findInAssets("upgrades.json"));
 
@@ -281,7 +298,19 @@ void saveGameConfig(const GameConfig& c, const std::string& path) {
         { "background_color", colorToJson(c.world.backgroundColor) },
         { "grid_color", colorToJson(c.world.gridColor) },
     };
-
+    j["boss"] = {
+    { "interval", c.boss.interval }, { "radius", c.boss.radius },
+    { "speed", c.boss.speed }, { "color", colorToJson(c.boss.color) },
+    { "hp", c.boss.hp }, { "contact_damage", c.boss.contactDamage },
+    { "xp_value", c.boss.xpValue },
+    { "hp_growth_per_minute", c.boss.hpGrowthPerMinute },
+    };
+    j["difficulty"] = {
+        { "enemy_hp_growth_per_minute", c.difficulty.enemyHpGrowthPerMinute },
+        { "spawn_interval_decay_per_minute", c.difficulty.spawnIntervalDecayPerMinute },
+        { "spawn_interval_min", c.difficulty.spawnIntervalMin },
+    };
+    
     std::ofstream out(path);
     if (!out.is_open()) { TraceLog(LOG_ERROR, "Cannot write config to '%s'", path.c_str()); return; }
     out << j.dump(2) << std::endl;

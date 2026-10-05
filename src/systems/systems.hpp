@@ -33,4 +33,6 @@ void renderOrbit      (World& w);
 void renderLightning  (World& w);
 void renderCircles    (entt::registry& r);
 
+void spawnBosses    (World& w, float dt);
+void renderBossHP   (World& w);
 }

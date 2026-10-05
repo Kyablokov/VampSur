@@ -83,6 +83,7 @@ inline void configureEnemy(entt::registry& r, entt::entity e,
     r.replace<ContactDamage>(e, cfg.contactDamage);
     r.replace<XPValue>      (e, cfg.xpValue);
     r.replace<OrbitHitCooldown>(e, 0.0f);
+    r.remove<BossTag>(e);   // на случай, если сущность была боссом в прошлой жизни
 }
 
 inline void configureProjectile(entt::registry& r, entt::entity e,

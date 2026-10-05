@@ -73,6 +73,22 @@ struct LightningConfig {
     Color color        = {200, 240, 255, 255};
 };
 
+struct BossConfig {
+    float interval            = 60.0f;
+    float radius              = 34.0f;
+    float speed               = 45.0f;
+    Color color               = {255, 40, 100, 255};
+    float hp                  = 800.0f;
+    float contactDamage       = 25.0f;
+    float xpValue             = 50.0f;
+    float hpGrowthPerMinute   = 0.5f;
+};
+
+struct DifficultyConfig {
+    float enemyHpGrowthPerMinute      = 0.33f;
+    float spawnIntervalDecayPerMinute = 0.05f;
+    float spawnIntervalMin            = 0.15f;
+};
 struct XPConfig {
     float orbRadius         = 5.0f;
     Color orbColor          = {100, 220, 255, 255};
@@ -122,7 +138,10 @@ struct GameConfig {
     CombatConfig                 combat;
     WorldConfig                  world;
     std::vector<UpgradeConfig>   upgrades;
+    BossConfig       boss;
+    DifficultyConfig difficulty;
 };
+
 
 GameConfig loadGameConfig(const std::string& path = "");
 void       saveGameConfig(const GameConfig& config, const std::string& path);

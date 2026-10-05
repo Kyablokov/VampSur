@@ -69,7 +69,12 @@ const EnemyTypeConfig& pickEnemyType(World& w) {
 void spawnEnemies(World& w, float dt) {
     w.state.spawnTimer -= dt;
     if (w.state.spawnTimer > 0.0f) return;
-    w.state.spawnTimer = w.config.spawner.interval;
+
+    // Скейлинг сложности
+    const float minutes = w.state.timeSeconds / 60.0f;
+    const float baseInterval = w.config.spawner.interval
+                             - w.config.difficulty.spawnIntervalDecayPerMinute * minutes;
+    w.state.spawnTimer = std::max(w.config.difficulty.spawnIntervalMin, baseInterval);
 
     auto pe = findPlayer(w.registry);
     if (pe == entt::null) return;
@@ -85,7 +90,45 @@ void spawnEnemies(World& w, float dt) {
     const float x     = ppos.x + std::cos(angle) * dist;
     const float y     = ppos.y + std::sin(angle) * dist;
 
-    configureEnemy(w.registry, e, x, y, pickEnemyType(w));
+    // Копируем тип и скейлим HP
+    EnemyTypeConfig type = pickEnemyType(w);
+    type.hp *= (1.0f + w.config.difficulty.enemyHpGrowthPerMinute * minutes);
+
+    configureEnemy(w.registry, e, x, y, type);
+}
+
+void spawnBosses(World& w, float dt) {
+    w.state.bossTimer -= dt;
+    if (w.state.bossTimer > 0.0f) return;
+    w.state.bossTimer = w.config.boss.interval;
+
+    auto pe = findPlayer(w.registry);
+    if (pe == entt::null) return;
+    const auto& ppos = w.registry.get<Position>(pe);
+
+    const auto e = w.enemies.acquire();
+    if (e == entt::null) return;
+
+    const float angle = randRange(w.state.rngState, 0.0f, kTwoPi);
+    const float dist  = w.config.spawner.distance + 100.0f;
+    const float x     = ppos.x + std::cos(angle) * dist;
+    const float y     = ppos.y + std::sin(angle) * dist;
+
+    const float minutes = w.state.timeSeconds / 60.0f;
+
+    EnemyTypeConfig boss;
+    boss.id            = "boss";
+    boss.radius        = w.config.boss.radius;
+    boss.speed         = w.config.boss.speed;
+    boss.color         = w.config.boss.color;
+    boss.hp            = w.config.boss.hp * (1.0f + w.config.boss.hpGrowthPerMinute * (minutes - 1.0f));
+    boss.contactDamage = w.config.boss.contactDamage;
+    boss.xpValue       = w.config.boss.xpValue;
+
+    configureEnemy(w.registry, e, x, y, boss);
+    w.registry.emplace_or_replace<BossTag>(e);
+
+    TraceLog(LOG_INFO, "Boss spawned: %.0f HP at t=%.1fs", boss.hp, w.state.timeSeconds);
 }
 
 // ---------------------------------------------------------------- AI
@@ -592,4 +635,21 @@ void renderCircles(entt::registry& r) {
         });
 }
 
+void renderBossHP(World& w) {
+    w.registry.view<BossTag, Position, RenderCircle, Health>(entt::exclude<Inactive>).each(
+        [&](auto, const Position& pos, const RenderCircle& rc, const Health& hp) {
+            constexpr float barW = 100.0f;
+            constexpr float barH = 8.0f;
+            const float x = pos.x - barW * 0.5f;
+            const float y = pos.y - rc.radius - 18.0f;
+            const float frac = (hp.max > 0.0f) ? (hp.current / hp.max) : 0.0f;
+
+            DrawRectangle(static_cast<int>(x), static_cast<int>(y),
+                          static_cast<int>(barW), static_cast<int>(barH),
+                          Fade(BLACK, 0.75f));
+            DrawRectangle(static_cast<int>(x)+1, static_cast<int>(y)+1,
+                          static_cast<int>((barW-2) * frac), static_cast<int>(barH)-2,
+                          Color{ 255, 40, 100, 255 });
+        });
+}
 } // namespace vk

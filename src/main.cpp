@@ -330,6 +330,9 @@ int main() {
 
                 updateInput      (world, dt);
                 spawnEnemies     (world, dt);
+                spawnBosses      (world, dt);   // ← добавить эту функцию
+                updateXPMagnet   (world, dt);
+                updateMovement   (world, dt);   
                 chasePlayer      (world, dt);
                 updateXPMagnet   (world, dt);
                 updateMovement   (world, dt);
@@ -365,7 +368,11 @@ int main() {
             }
             case GameMode::GameOver: {
                 world.finalizeRun();
-                if (IsKeyPressed(KEY_SPACE)) world.reset();
+                const bool restart =
+                    IsKeyPressed(KEY_SPACE) ||
+                    IsKeyPressed(KEY_ENTER) ||
+                    IsMouseButtonPressed(MOUSE_LEFT_BUTTON);
+                if (restart) world.reset();
                 break;
             }
         }
@@ -386,6 +393,7 @@ int main() {
             renderAura(world);
             renderOrbit(world);
             renderCircles(world.registry);
+            renderBossHP(world);   // ← добавить
             renderLightning(world);
         EndMode2D();
 
